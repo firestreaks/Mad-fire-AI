@@ -1,583 +1,909 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-  <title>Madfire AI</title>
-
-  <!-- PWA / Home Screen -->
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="apple-mobile-web-app-title" content="Madfire"/>
-  <meta name="theme-color" content="#1a0400"/>
-  <meta name="mobile-web-app-capable" content="yes"/>
-  <meta name="application-name" content="Madfire"/>
-
-  <!-- Fire icon as SVG data URI for all icon sizes -->
-  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%231a0400'/%3E%3Ctext x='96' y='140' font-size='110' text-anchor='middle'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E"/>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%231a0400'/%3E%3Ctext x='96' y='140' font-size='110' text-anchor='middle'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E"/>
-
-  <!-- Inline Web App Manifest -->
-  <link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Madfire%20AI%22%2C%22short_name%22%3A%22Madfire%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231a0400%22%2C%22theme_color%22%3A%22%231a0400%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%2520viewBox%3D'0%25200%2520192%2520192'%253E%253Crect%2520width%3D'192'%2520height%3D'192'%2520rx%3D'40'%2520fill%3D'%25231a0400'%2F%253E%253Ctext%2520x%3D'96'%2520y%3D'140'%2520font-size%3D'110'%2520text-anchor%3D'middle'%253E%25F0%259F%2594%25A5%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D"/>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet"/>
-
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; overflow: hidden; background: #020002; font-family: Georgia, serif; }
-
-    /* Fire canvas behind everything */
-    #fireCanvas { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
-
-    /* Layout */
-    #app { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
-
-    /* Header */
-    #header {
-      padding: 14px 22px 10px;
-      border-bottom: 1px solid rgba(255,70,0,0.18);
-      background: rgba(4,0,0,0.8);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      display: flex; align-items: center; gap: 11px;
-      flex-shrink: 0;
-    }
-    #header h1 {
-      font-family: 'Cinzel Decorative', serif;
-      font-size: clamp(15px, 3.5vw, 24px);
-      color: #ff6a00; letter-spacing: 4px;
-      animation: glow 2.5s ease-in-out infinite;
-    }
-    #header p { font-family: monospace; font-size: 9px; color: rgba(255,140,60,0.5); letter-spacing: 3px; margin-top: 2px; }
-    #qaCount { margin-left: auto; font-family: monospace; font-size: 10px; color: rgba(255,100,30,0.45); }
-
-    /* Messages */
-    #messages { flex: 1; overflow-y: auto; padding: 16px clamp(10px,5vw,80px); }
-    .msg-row { display: flex; margin-bottom: 13px; animation: fadeUp .3s ease; }
-    .msg-row.user { justify-content: flex-end; }
-    .msg-row.ai   { justify-content: flex-start; }
-    .ai-avatar {
-      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
-      background: linear-gradient(135deg,#ff3c00,#ff9500);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 15px; margin-right: 8px;
-      box-shadow: 0 0 10px rgba(255,90,0,0.45);
-    }
-    .msg-wrap { max-width: 78%; display: flex; flex-direction: column; gap: 4px; }
-    .msg-row.user .msg-wrap { align-items: flex-end; }
-    .msg-meta { display: flex; align-items: center; gap: 7px; }
-    .msg-meta span.name { font-family: 'Cinzel Decorative', serif; font-size: 9px; letter-spacing: 3px; color: #ff6a00; }
-    .timer-badge {
-      font-size: 10px; font-family: monospace; padding: 1px 8px; border-radius: 20px;
-      background: rgba(255,100,0,0.15); border: 1px solid #ff6a00; color: #ff9500;
-    }
-    .bubble {
-      padding: 10px 14px; font-size: 14px; line-height: 1.78;
-      font-family: Georgia, serif; white-space: pre-wrap; word-break: break-word;
-      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    }
-    .bubble.user {
-      background: rgba(255,80,0,0.14); border: 1px solid rgba(255,106,0,0.32);
-      border-radius: 16px 16px 3px 16px; color: #ffe0c0;
-    }
-    .bubble.ai {
-      background: rgba(10,2,0,0.88); border: 1px solid rgba(255,70,0,0.15);
-      border-radius: 3px 16px 16px 16px; color: #f5dfc0;
-    }
-
-    /* Suggestions */
-    #suggestions-wrap { padding: 8px clamp(10px,5vw,80px) 4px; background: rgba(4,0,0,0.72); flex-shrink: 0; }
-    #suggestions { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
-    #suggestions::-webkit-scrollbar { display: none; }
-    .chip {
-      background: rgba(255,70,0,0.1); border: 1px solid rgba(255,70,0,0.25);
-      border-radius: 20px; padding: 7px 14px; color: #ffb580; font-size: 12px;
-      cursor: pointer; font-family: monospace; white-space: nowrap;
-      transition: all .2s; flex-shrink: 0;
-    }
-    .chip:hover, .chip:active { background: rgba(255,80,0,0.25); border-color: rgba(255,100,0,0.5); color: #ffd0a0; }
-
-    /* Input area */
-    #input-area {
-      padding: 8px clamp(10px,5vw,80px) max(14px, env(safe-area-inset-bottom));
-      border-top: 1px solid rgba(255,70,0,0.13);
-      background: rgba(4,0,0,0.9);
-      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-      flex-shrink: 0;
-    }
-    #input-row {
-      display: flex; gap: 8px; align-items: flex-end;
-      background: rgba(18,4,0,0.92); border: 1px solid rgba(255,80,0,0.25);
-      border-radius: 12px; padding: 8px 8px 8px 14px;
-    }
-    #input-row:focus-within { border-color: rgba(255,120,0,0.45); }
-    textarea#userInput {
-      flex: 1; background: transparent; border: none; outline: none;
-      color: #ffe0c0; resize: none; font-family: monospace; font-size: 14px;
-      line-height: 1.6; min-height: 24px; max-height: 100px; overflow-y: auto;
-    }
-    textarea#userInput::placeholder { color: rgba(255,140,60,0.35); }
-    #sendBtn {
-      width: 36px; height: 36px; border-radius: 8px; border: none;
-      background: linear-gradient(135deg,#ff4500,#ff8c00); font-size: 16px;
-      cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-      transition: all .2s; box-shadow: 0 0 10px rgba(255,80,0,0.4);
-    }
-    #sendBtn:disabled { background: rgba(40,10,0,0.4); box-shadow: none; opacity: 0.3; cursor: not-allowed; }
-    #hint { text-align: center; margin-top: 5px; font-family: monospace; font-size: 9px; color: rgba(255,90,30,0.25); letter-spacing: 2px; }
-
-    /* Scrollbar */
-    #messages::-webkit-scrollbar { width: 3px; }
-    #messages::-webkit-scrollbar-thumb { background: rgba(255,80,0,0.3); border-radius: 4px; }
-
-    /* Animations */
-    @keyframes glow {
-      0%,100% { text-shadow: 0 0 18px #ff4500, 0 0 40px #ff2000; }
-      50%      { text-shadow: 0 0 30px #ff6a00, 0 0 60px #ff3000; }
-    }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<title>Madfire AI</title>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Madfire"/>
+<meta name="theme-color" content="#1a0400"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%231a0400'/%3E%3Ctext x='96' y='140' font-size='110' text-anchor='middle'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%231a0400'/%3E%3Ctext x='96' y='140' font-size='110' text-anchor='middle'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E"/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#020002;font-family:Georgia,serif}
+#fc{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none}
+#app{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;height:100dvh}
+#hdr{padding:12px 20px 8px;border-bottom:1px solid rgba(255,70,0,.18);background:rgba(4,0,0,.82);backdrop-filter:blur(16px);display:flex;align-items:center;gap:10px;flex-shrink:0}
+#hdr h1{font-family:"Cinzel Decorative",serif;font-size:clamp(13px,3.5vw,22px);color:#ff6a00;letter-spacing:4px;animation:glow 2.5s ease-in-out infinite}
+#hdr p{font-family:monospace;font-size:9px;color:rgba(255,140,60,.45);letter-spacing:3px;margin-top:2px}
+#qc{margin-left:auto;font-family:monospace;font-size:10px;color:rgba(255,100,30,.4);white-space:nowrap}
+#msgs{flex:1;overflow-y:auto;padding:14px clamp(8px,5vw,70px)}
+.mr{display:flex;margin-bottom:12px;animation:fu .3s ease}
+.mr.u{justify-content:flex-end}.mr.a{justify-content:flex-start}
+.av{width:28px;height:28px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#ff3c00,#ff9500);display:flex;align-items:center;justify-content:center;font-size:13px;margin-right:8px;box-shadow:0 0 10px rgba(255,90,0,.4)}
+.mw{max-width:78%;display:flex;flex-direction:column;gap:4px}
+.mr.u .mw{align-items:flex-end}
+.mm{display:flex;align-items:center;gap:6px}
+.mn{font-family:"Cinzel Decorative",serif;font-size:9px;letter-spacing:3px;color:#ff6a00}
+.tb{font-size:10px;font-family:monospace;padding:1px 8px;border-radius:20px;background:rgba(255,100,0,.14);border:1px solid #ff6a00;color:#ff9500}
+.b{padding:9px 13px;font-size:13.5px;line-height:1.78;font-family:Georgia,serif;white-space:pre-wrap;word-break:break-word;backdrop-filter:blur(8px)}
+.b.u{background:rgba(255,80,0,.13);border:1px solid rgba(255,106,0,.3);border-radius:16px 16px 3px 16px;color:#ffe0c0}
+.b.a{background:rgba(10,2,0,.88);border:1px solid rgba(255,70,0,.14);border-radius:3px 16px 16px 16px;color:#f5dfc0}
+#sw{padding:7px clamp(8px,5vw,70px) 3px;background:rgba(4,0,0,.7);flex-shrink:0}
+#sc{display:flex;gap:7px;overflow-x:auto;padding-bottom:5px;scrollbar-width:none}
+#sc::-webkit-scrollbar{display:none}
+.chip{background:rgba(255,70,0,.1);border:1px solid rgba(255,70,0,.24);border-radius:20px;padding:6px 13px;color:#ffb580;font-size:11px;cursor:pointer;font-family:monospace;white-space:nowrap;transition:all .2s;flex-shrink:0}
+.chip:hover,.chip:active{background:rgba(255,80,0,.24);color:#ffd0a0}
+#ia{padding:8px clamp(8px,5vw,70px) max(12px,env(safe-area-inset-bottom));border-top:1px solid rgba(255,70,0,.13);background:rgba(4,0,0,.9);backdrop-filter:blur(18px);flex-shrink:0}
+#ir{display:flex;gap:8px;align-items:flex-end;background:rgba(18,4,0,.92);border:1px solid rgba(255,80,0,.24);border-radius:12px;padding:8px 8px 8px 13px}
+#ir:focus-within{border-color:rgba(255,120,0,.44)}
+textarea#ui{flex:1;background:transparent;border:none;outline:none;color:#ffe0c0;resize:none;font-family:monospace;font-size:14px;line-height:1.6;min-height:24px;max-height:100px;overflow-y:auto}
+textarea#ui::placeholder{color:rgba(255,140,60,.33)}
+#sb{width:35px;height:35px;border-radius:8px;border:none;background:linear-gradient(135deg,#ff4500,#ff8c00);font-size:15px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;box-shadow:0 0 10px rgba(255,80,0,.38)}
+#sb:disabled{background:rgba(40,10,0,.4);box-shadow:none;opacity:.28;cursor:not-allowed}
+#ht{text-align:center;margin-top:4px;font-family:monospace;font-size:9px;color:rgba(255,90,30,.2);letter-spacing:2px}
+#msgs::-webkit-scrollbar{width:3px}
+#msgs::-webkit-scrollbar-thumb{background:rgba(255,80,0,.28);border-radius:4px}
+@keyframes glow{0%,100%{text-shadow:0 0 18px #ff4500,0 0 40px #ff2000}50%{text-shadow:0 0 30px #ff6a00,0 0 60px #ff3000}}
+@keyframes fu{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+</style>
 </head>
 <body>
-
-<canvas id="fireCanvas"></canvas>
-
+<canvas id="fc"></canvas>
 <div id="app">
-  <div id="header">
-    <span style="font-size:24px">🔥</span>
-    <div>
-      <h1>MADFIRE</h1>
-      <p>BLAZING AI · 100+ TOPICS · INSTANT ANSWERS</p>
-    </div>
-    <div id="qaCount"></div>
-  </div>
-
-  <div id="messages"></div>
-
-  <div id="suggestions-wrap">
-    <div id="suggestions"></div>
-  </div>
-
-  <div id="input-area">
-    <div id="input-row">
-      <textarea id="userInput" rows="1" placeholder="Ask me anything…"></textarea>
-      <button id="sendBtn" disabled>🔥</button>
-    </div>
-    <p id="hint">ENTER TO SEND · SHIFT+ENTER NEW LINE · NO IMAGES · NO VIDEOS</p>
-  </div>
+<div id="hdr"><span style="font-size:22px">🔥</span><div><h1>MADFIRE</h1><p>BLAZING AI · MAXIMUM KNOWLEDGE · INSTANT ANSWERS</p></div><div id="qc"></div></div>
+<div id="msgs"></div>
+<div id="sw"><div id="sc"></div></div>
+<div id="ia"><div id="ir"><textarea id="ui" rows="1" placeholder="Ask me absolutely anything…"></textarea><button id="sb" disabled>🔥</button></div><p id="ht">ENTER TO SEND · SHIFT+ENTER NEW LINE · NO IMAGES · NO VIDEOS</p></div>
 </div>
-
 <script>
-// ── FIRE CANVAS ────────────────────────────────────────────────────────────────
-(function() {
-  const canvas = document.getElementById('fireCanvas');
-  const ctx = canvas.getContext('2d');
-  let animId;
-
-  function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  resize();
-  window.addEventListener('resize', resize);
-
-  const COUNT = 220;
-  function mkP(born) {
-    return {
-      x: Math.random() * canvas.width,
-      y: born ? canvas.height + 20 : canvas.height - Math.random() * canvas.height * 0.85,
-      vx: (Math.random() - 0.5) * 1.4,
-      vy: -(Math.random() * 4 + 2),
-      life: Math.random() * 0.65 + 0.35,
-      ml: 1,
-      sz: Math.random() * 24 + 7
-    };
-  }
-  const ps = Array.from({ length: COUNT }, () => mkP(false));
-
-  function tick() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    bg.addColorStop(0,    '#020002');
-    bg.addColorStop(0.65, '#090001');
-    bg.addColorStop(1,    '#1c0400');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const eg = ctx.createRadialGradient(canvas.width/2, canvas.height, 0, canvas.width/2, canvas.height, canvas.width * 0.65);
-    eg.addColorStop(0,    'rgba(255,65,0,0.25)');
-    eg.addColorStop(0.45, 'rgba(200,20,0,0.1)');
-    eg.addColorStop(1,    'rgba(0,0,0,0)');
-    ctx.fillStyle = eg;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.globalCompositeOperation = 'screen';
-    const now = Date.now() * 0.001;
-
-    ps.forEach(p => {
-      p.x += p.vx + Math.sin(now + p.y * 0.009) * 0.6;
-      p.y += p.vy;
-      p.vy -= 0.038;
-      p.life -= 0.011;
-      p.sz *= 0.9935;
-      if (p.life <= 0 || p.y < -80) Object.assign(p, mkP(true));
-
-      const a = Math.max(0, p.life / p.ml);
-      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.sz);
-      g.addColorStop(0,   `rgba(255,${Math.floor(a*200+30)},15,1)`);
-      g.addColorStop(0.4, `rgba(255,${Math.floor(a*90)},0,0.7)`);
-      g.addColorStop(1,   'rgba(60,0,0,0)');
-      ctx.globalAlpha = a * 0.88;
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.sz, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 1;
-    animId = requestAnimationFrame(tick);
-  }
-  tick();
+(function(){
+const cv=document.getElementById('fc'),ctx=cv.getContext('2d');let id;
+function resize(){cv.width=window.innerWidth;cv.height=window.innerHeight;}
+resize();window.addEventListener('resize',resize);
+const N=220,mkP=b=>({x:Math.random()*cv.width,y:b?cv.height+20:cv.height-Math.random()*cv.height*.85,vx:(Math.random()-.5)*1.4,vy:-(Math.random()*4+2),life:Math.random()*.65+.35,ml:1,sz:Math.random()*24+7});
+const ps=Array.from({length:N},()=>mkP(false));
+function tick(){
+ctx.clearRect(0,0,cv.width,cv.height);
+const bg=ctx.createLinearGradient(0,0,0,cv.height);
+bg.addColorStop(0,'#020002');bg.addColorStop(.65,'#090001');bg.addColorStop(1,'#1c0400');
+ctx.fillStyle=bg;ctx.fillRect(0,0,cv.width,cv.height);
+const eg=ctx.createRadialGradient(cv.width/2,cv.height,0,cv.width/2,cv.height,cv.width*.65);
+eg.addColorStop(0,'rgba(255,65,0,0.25)');eg.addColorStop(.45,'rgba(200,20,0,0.1)');eg.addColorStop(1,'rgba(0,0,0,0)');
+ctx.fillStyle=eg;ctx.fillRect(0,0,cv.width,cv.height);
+ctx.globalCompositeOperation='screen';const now=Date.now()*.001;
+ps.forEach(p=>{
+p.x+=p.vx+Math.sin(now+p.y*.009)*.6;p.y+=p.vy;p.vy-=.038;p.life-=.011;p.sz*=.9935;
+if(p.life<=0||p.y<-80)Object.assign(p,mkP(true));
+const a=Math.max(0,p.life/p.ml);
+const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.sz);
+g.addColorStop(0,`rgba(255,${Math.floor(a*200+30)},15,1)`);
+g.addColorStop(.4,`rgba(255,${Math.floor(a*90)},0,0.7)`);
+g.addColorStop(1,'rgba(60,0,0,0)');
+ctx.globalAlpha=a*.88;ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,p.sz,0,Math.PI*2);ctx.fill();
+});
+ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;id=requestAnimationFrame(tick);
+}tick();
 })();
-
-// ── Q&A KNOWLEDGE BASE ─────────────────────────────────────────────────────────
-const QA = [
-  // MATH
-  { q: ["what is 2+2","2 plus 2","2+2"], a: "2 + 2 = 4 🔥" },
-  { q: ["what is 2+3","2 plus 3"], a: "2 + 3 = 5" },
-  { q: ["what is 10+10","10 plus 10"], a: "10 + 10 = 20" },
-  { q: ["what is 5*5","5 times 5","5x5"], a: "5 × 5 = 25" },
-  { q: ["what is 10*10","10 times 10"], a: "10 × 10 = 100" },
-  { q: ["what is 12*12"], a: "12 × 12 = 144" },
-  { q: ["what is 7*8","7 times 8"], a: "7 × 8 = 56" },
-  { q: ["what is 9*9"], a: "9 × 9 = 81" },
-  { q: ["what is 100-50"], a: "100 - 50 = 50" },
-  { q: ["what is 50/2","50 divided by 2"], a: "50 ÷ 2 = 25" },
-  { q: ["what is pi","what is π"], a: "π (pi) ≈ 3.14159265358979...\nIt's the ratio of a circle's circumference to its diameter, going on forever without repeating." },
-  { q: ["what is the square root of 144","sqrt 144"], a: "√144 = 12" },
-  { q: ["what is the square root of 64","sqrt 64"], a: "√64 = 8" },
-  { q: ["what is the square root of 25","sqrt 25"], a: "√25 = 5" },
-  { q: ["what is infinity"], a: "Infinity (∞) is not a number — it's a concept representing something without any bound or limit. It's larger than any real number you can name." },
-  { q: ["what is a prime number"], a: "A prime number is a number greater than 1 that has no divisors other than 1 and itself.\nExamples: 2, 3, 5, 7, 11, 13, 17, 19, 23..." },
-  { q: ["what is algebra"], a: "Algebra uses symbols (like x, y) to represent numbers and express relationships. It's about solving equations to find unknown values." },
-  { q: ["what is calculus"], a: "Calculus is the math of change and motion. It has two parts:\n• Differentiation (rates of change)\n• Integration (areas under curves)" },
-  { q: ["what is 2 to the power of 10","2^10"], a: "2¹⁰ = 1,024" },
-  { q: ["what is 2 to the power of 32","2^32"], a: "2³² = 4,294,967,296" },
-  { q: ["what is a billion"], a: "1 billion = 1,000,000,000 (one thousand million)." },
-  { q: ["what is a trillion"], a: "1 trillion = 1,000,000,000,000 (one million million)." },
-  // SCIENCE
-  { q: ["what is gravity"], a: "Gravity is the force that attracts objects with mass toward each other. On Earth it pulls everything down at 9.8 m/s². It keeps planets orbiting the sun and the moon orbiting Earth." },
-  { q: ["what is the speed of light"], a: "The speed of light = 299,792,458 m/s — roughly 300,000 km/s or 186,000 miles/second. Nothing with mass can reach it." },
-  { q: ["what is dna","what is dna?"], a: "DNA (Deoxyribonucleic Acid) is the molecule carrying genetic instructions for life. It's shaped like a double helix and contains the code for every protein in your body." },
-  { q: ["what is an atom"], a: "An atom is the smallest unit of an element. It has a nucleus (protons + neutrons) surrounded by electrons." },
-  { q: ["what is a black hole"], a: "A black hole is a region in space where gravity is so strong that nothing — not even light — can escape. They form when massive stars collapse." },
-  { q: ["what is evolution"], a: "Evolution is how species change over generations through natural selection, mutation, and genetic drift. It explains the diversity of all life on Earth." },
-  { q: ["what is photosynthesis"], a: "Photosynthesis is how plants convert sunlight + water + CO₂ into glucose (energy) and oxygen. It's how plants eat — and how we get the air we breathe." },
-  { q: ["what is the big bang"], a: "The Big Bang: ~13.8 billion years ago, all matter and energy exploded from an incredibly dense point and has been expanding ever since." },
-  { q: ["what is climate change"], a: "Climate change = long-term shifts in global temperatures and weather. Since the 1800s, human activities (burning fossil fuels) have been the main driver." },
-  { q: ["what is the periodic table"], a: "The periodic table organizes all 118 known chemical elements by atomic number, electron configuration, and chemical properties." },
-  { q: ["what is quantum mechanics"], a: "Quantum mechanics describes how matter and energy behave at atomic scales. It's strange — particles can be in multiple states at once until observed." },
-  { q: ["what is the theory of relativity"], a: "Einstein's relativity:\n• Special Relativity: space and time are relative, E=mc²\n• General Relativity: gravity is the curvature of spacetime caused by mass." },
-  { q: ["how many planets are in the solar system"], a: "8 planets: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune.\n(Pluto was reclassified as a dwarf planet in 2006.)" },
-  { q: ["what is the sun made of"], a: "The sun is ~73% hydrogen, ~25% helium. Nuclear fusion in its core converts hydrogen to helium, releasing enormous energy." },
-  { q: ["how old is the earth"], a: "Earth is approximately 4.54 billion years old, based on radiometric dating." },
-  { q: ["what is the milky way"], a: "The Milky Way is our home galaxy — a barred spiral with 100–400 billion stars. Our solar system is ~26,000 light-years from the center." },
-  // GEOGRAPHY
-  { q: ["what is the capital of france","capital of france"], a: "The capital of France is Paris 🗼" },
-  { q: ["what is the capital of usa","capital of usa","capital of america"], a: "The capital of the USA is Washington, D.C." },
-  { q: ["what is the capital of japan","capital of japan"], a: "The capital of Japan is Tokyo 🗾" },
-  { q: ["what is the capital of china","capital of china"], a: "The capital of China is Beijing." },
-  { q: ["what is the capital of uk","capital of england","capital of britain"], a: "The capital of the United Kingdom is London 🇬🇧" },
-  { q: ["what is the capital of germany"], a: "The capital of Germany is Berlin." },
-  { q: ["what is the capital of italy"], a: "The capital of Italy is Rome." },
-  { q: ["what is the capital of spain"], a: "The capital of Spain is Madrid." },
-  { q: ["what is the capital of brazil"], a: "The capital of Brazil is Brasília." },
-  { q: ["what is the capital of australia"], a: "The capital of Australia is Canberra (not Sydney or Melbourne — a common misconception!)." },
-  { q: ["what is the capital of canada"], a: "The capital of Canada is Ottawa." },
-  { q: ["what is the capital of russia"], a: "The capital of Russia is Moscow." },
-  { q: ["what is the capital of india"], a: "The capital of India is New Delhi." },
-  { q: ["what is the capital of south africa"], a: "South Africa has three capitals: Pretoria (executive), Cape Town (legislative), Bloemfontein (judicial)." },
-  { q: ["what is the capital of mexico"], a: "The capital of Mexico is Mexico City." },
-  { q: ["what is the capital of egypt"], a: "The capital of Egypt is Cairo." },
-  { q: ["what is the capital of nigeria"], a: "The capital of Nigeria is Abuja." },
-  { q: ["what is the capital of turkey"], a: "The capital of Turkey is Ankara." },
-  { q: ["what is the capital of argentina"], a: "The capital of Argentina is Buenos Aires." },
-  { q: ["what is the capital of saudi arabia"], a: "The capital of Saudi Arabia is Riyadh." },
-  { q: ["what is the capital of uae"], a: "The capital of the UAE is Abu Dhabi." },
-  { q: ["what is the capital of pakistan"], a: "The capital of Pakistan is Islamabad." },
-  { q: ["what is the capital of south korea"], a: "The capital of South Korea is Seoul." },
-  { q: ["what is the capital of north korea"], a: "The capital of North Korea is Pyongyang." },
-  { q: ["what is the capital of greece"], a: "The capital of Greece is Athens." },
-  { q: ["what is the capital of sweden"], a: "The capital of Sweden is Stockholm." },
-  { q: ["what is the capital of norway"], a: "The capital of Norway is Oslo." },
-  { q: ["what is the capital of netherlands"], a: "The capital of the Netherlands is Amsterdam (though The Hague is the seat of government)." },
-  { q: ["what is the capital of switzerland"], a: "The capital of Switzerland is Bern." },
-  { q: ["what is the capital of poland"], a: "The capital of Poland is Warsaw." },
-  { q: ["what is the capital of ukraine"], a: "The capital of Ukraine is Kyiv." },
-  { q: ["what is the largest country in the world"], a: "Russia is the largest country by land area — about 17.1 million km², roughly 11% of Earth's total land." },
-  { q: ["what is the smallest country in the world"], a: "Vatican City is the smallest country — just 0.44 km² inside Rome, Italy." },
-  { q: ["what is the longest river in the world"], a: "The Nile (~6,650 km) is traditionally considered the longest, though some measurements put the Amazon River slightly ahead." },
-  { q: ["what is the tallest mountain in the world"], a: "Mount Everest in the Himalayas — 8,849 meters (29,032 feet) above sea level." },
-  { q: ["what is the deepest ocean"], a: "The Pacific Ocean is deepest, containing the Mariana Trench at ~11,034 meters (36,201 feet) deep." },
-  { q: ["how many countries in the world"], a: "195 countries — 193 UN member states + Vatican City and Palestine as observer states." },
-  { q: ["what is the largest ocean"], a: "The Pacific Ocean — ~165 million km², larger than all Earth's landmasses combined." },
-  { q: ["what continent is egypt in"], a: "Egypt is in Africa (though the Sinai Peninsula is geographically in Asia)." },
-  // HISTORY
-  { q: ["when did world war 2 end","when did ww2 end"], a: "WW2 ended in 1945:\n• Europe: May 8 (V-E Day)\n• Pacific: September 2 (V-J Day) after Japan's formal surrender." },
-  { q: ["when did world war 1 end","when did ww1 end"], a: "World War 1 ended November 11, 1918, with the signing of the Armistice." },
-  { q: ["when did ww2 start","when did world war 2 start"], a: "World War 2 started on September 1, 1939, when Nazi Germany invaded Poland." },
-  { q: ["who was the first president of the usa"], a: "George Washington — first US President, serving 1789–1797." },
-  { q: ["when did the titanic sink"], a: "The Titanic sank on April 15, 1912 after hitting an iceberg. Over 1,500 people died." },
-  { q: ["who invented the telephone"], a: "Alexander Graham Bell received the first telephone patent in 1876." },
-  { q: ["who invented the light bulb"], a: "Thomas Edison is most credited with the practical incandescent light bulb (1879), though others like Joseph Swan also contributed." },
-  { q: ["when did man first land on the moon"], a: "July 20, 1969 — Neil Armstrong and Buzz Aldrin landed during NASA's Apollo 11 mission." },
-  { q: ["who was napoleon"], a: "Napoleon Bonaparte (1769–1821) — French military genius and emperor who conquered most of Europe before being defeated and exiled." },
-  { q: ["what was the roman empire"], a: "One of history's most powerful civilizations — controlling much of Europe, North Africa, and the Middle East from 27 BC to 476 AD." },
-  { q: ["what caused world war 1"], a: "WWI was triggered by Archduke Franz Ferdinand's assassination, igniting a web of alliances, nationalism, imperial rivalries, and military buildup." },
-  { q: ["what was the cold war"], a: "The Cold War (1947–1991) — USA vs USSR: capitalism vs communism, fought through proxy wars, espionage, and arms race — but never direct combat." },
-  { q: ["when did the berlin wall fall"], a: "November 9, 1989. It symbolized the end of the Cold War and led to German reunification in 1990." },
-  { q: ["who was albert einstein"], a: "Albert Einstein (1879–1955) — German-born physicist who developed relativity (E=mc²) and won the 1921 Nobel Prize in Physics." },
-  { q: ["who was cleopatra"], a: "Cleopatra VII (69–30 BC) — last active ruler of Egypt, known for her intelligence, political skill, and relationships with Julius Caesar and Mark Antony." },
-  { q: ["what was the renaissance"], a: "The Renaissance (14th–17th century) was a cultural rebirth in Europe: an explosion of art, science, and philosophy. Leonardo da Vinci and Michelangelo were among its icons." },
-  { q: ["what was the industrial revolution"], a: "The Industrial Revolution (late 1700s–1800s) transformed manufacturing from hand production to machines, starting in Britain and spreading worldwide. It changed society forever." },
-  // TECHNOLOGY
-  { q: ["what is artificial intelligence","what is ai"], a: "AI (Artificial Intelligence) is the simulation of human intelligence by machines — including learning, reasoning, problem-solving, and language understanding." },
-  { q: ["what is machine learning"], a: "Machine learning is a subset of AI where systems learn from data to improve performance without being explicitly programmed." },
-  { q: ["what is the internet"], a: "The internet is a global network of billions of connected devices using TCP/IP protocols to exchange data across the world." },
-  { q: ["what is blockchain"], a: "Blockchain is a distributed ledger — data stored in linked blocks across many computers. Transparent, tamper-resistant, and the foundation of cryptocurrencies." },
-  { q: ["what is bitcoin"], a: "Bitcoin is the first cryptocurrency, created in 2009 by the pseudonymous Satoshi Nakamoto. Decentralized digital currency using blockchain technology." },
-  { q: ["what is python"], a: "Python is a high-level programming language known for clean syntax. Used widely in AI/ML, web development, data science, and automation." },
-  { q: ["what is javascript"], a: "JavaScript is the programming language of the web. It runs in browsers to make websites interactive, and on servers via Node.js." },
-  { q: ["what is a cpu"], a: "CPU (Central Processing Unit) — the brain of a computer. It executes instructions and performs calculations." },
-  { q: ["what is ram"], a: "RAM (Random Access Memory) — your computer's short-term memory. It temporarily stores active data for fast CPU access. More RAM = smoother multitasking." },
-  { q: ["what is the cloud","what is cloud computing"], a: "Cloud computing = storing and accessing data and programs over the internet. Examples: Google Drive, AWS, iCloud." },
-  { q: ["what is cybersecurity"], a: "Cybersecurity protects systems, networks, and programs from digital attacks, unauthorized access, and data breaches." },
-  { q: ["what is 5g"], a: "5G is the 5th generation of mobile networks — faster speeds, lower latency, and higher capacity than 4G. Enables things like autonomous vehicles and real-time AR." },
-  { q: ["what is vr","what is virtual reality"], a: "VR (Virtual Reality) is a simulated 3D environment you interact with via headsets and controllers, feeling immersed in a digital world." },
-  // HEALTH
-  { q: ["how many bones in the human body"], a: "Adults have 206 bones. Babies start with ~270–300, but many fuse as they grow." },
-  { q: ["how many muscles in the human body"], a: "Over 600 muscles, making up ~40% of body weight." },
-  { q: ["what is the human heart"], a: "A fist-sized muscle that pumps blood through your body ~100,000 times/day — about 5 liters per minute." },
-  { q: ["how much water should i drink"], a: "A common guideline: 8 glasses (~2 liters) per day. Needs vary by activity and climate. Rule of thumb: keep urine light yellow." },
-  { q: ["what is the immune system"], a: "Your body's defense network against pathogens. Includes white blood cells, antibodies, lymph nodes, and the spleen." },
-  { q: ["what is a calorie"], a: "A calorie is a unit of energy. The average adult needs ~2,000–2,500 calories/day to function." },
-  { q: ["why do we sleep"], a: "Sleep is essential for brain function, memory, hormone regulation, immune health, and physical repair. Adults need 7–9 hours/night." },
-  { q: ["what is blood pressure"], a: "The force of blood against artery walls. Normal is ~120/80 mmHg (systolic/diastolic)." },
-  { q: ["what is diabetes"], a: "Diabetes = the body doesn't properly regulate blood sugar. Type 1 is autoimmune; Type 2 is often lifestyle-related. Both need careful management." },
-  // CODING
-  { q: ["how do i print hello world in python"], a: 'Python:\n\nprint("Hello, World!")\n\nJust one line! 🔥' },
-  { q: ["how do i make a for loop in python"], a: 'Python for loop:\n\nfor i in range(10):\n    print(i)\n\nPrints 0 through 9.' },
-  { q: ["what is a variable"], a: 'A variable stores a value:\n\nname = "Madfire"\nage = 100\n\nYou can change the value anytime.' },
-  { q: ["what is an api"], a: "An API (Application Programming Interface) lets different software talk to each other. Weather apps use weather APIs; payment apps use payment APIs." },
-  { q: ["what is html"], a: "HTML (HyperText Markup Language) defines the structure and content of web pages using tags like <h1>, <p>, <img>." },
-  { q: ["what is css"], a: "CSS (Cascading Style Sheets) controls the visual appearance of HTML — colors, fonts, layout, spacing, and animations." },
-  { q: ["what is a function"], a: 'A reusable block of code:\n\ndef greet(name):\n    return f"Hello, {name}!"\n\nprint(greet("Madfire"))' },
-  { q: ["what is object oriented programming","what is oop"], a: "OOP organizes code into objects with data (attributes) and behavior (methods). Key ideas: Classes, Objects, Inheritance, Encapsulation, Polymorphism." },
-  { q: ["what is git"], a: "Git is a version control system that tracks code changes. It lets teams collaborate, branch, and merge without losing history." },
-  { q: ["what is sql"], a: "SQL (Structured Query Language) manages relational databases:\n\nSELECT * FROM users WHERE age > 18;" },
-  { q: ["what is the best programming language"], a: "Depends on your goal:\n• Web front-end → JavaScript\n• AI/Data Science → Python\n• Mobile → Swift or Kotlin\n• Systems → Rust or C++\n• Enterprise → Java\n\nPython is best for beginners." },
-  // CULTURE
-  { q: ["who is shakespeare"], a: "William Shakespeare (1564–1616) — English playwright and poet, widely considered the greatest writer in English. Wrote Hamlet, Macbeth, Romeo & Juliet, and 34 more plays." },
-  { q: ["what is the most popular sport in the world"], a: "Football (soccer) — ~4 billion fans worldwide. The FIFA World Cup is the most-watched sporting event on Earth." },
-  { q: ["who invented chess"], a: "Chess originated in India (~6th century AD) as Chaturanga, spread to Persia then the Arab world, and reached Europe where modern rules were established." },
-  { q: ["who painted the mona lisa"], a: "Leonardo da Vinci, painted ~1503–1519. It hangs in the Louvre, Paris, and is the most famous painting in the world." },
-  { q: ["what is the olympics"], a: "An international sports competition every 4 years (Summer) / 2 years offset (Winter). Origins in ancient Greece (~776 BC), revived in Athens 1896." },
-  { q: ["who is michael jordan"], a: "Widely considered the greatest basketball player of all time. 6 NBA championships, 6 Finals MVPs, 5 regular season MVPs with the Chicago Bulls." },
-  { q: ["what is hip hop"], a: "A cultural movement + music genre born in the Bronx, NYC in the early 1970s. Encompasses rapping, DJing, breakdancing, and graffiti." },
-  // PHILOSOPHY / RANDOM
-  { q: ["what is the meaning of life"], a: "Philosophers have wrestled with this forever:\n• 42 (Douglas Adams)\n• Living virtuously (Aristotle)\n• Creating your own meaning (Existentialism)\n• Reducing suffering and increasing joy\n\nWhat's YOUR answer? 🔥" },
-  { q: ["do aliens exist"], a: "No confirmed evidence yet. But with ~2 trillion galaxies each containing billions of stars, most scientists think life elsewhere is statistically likely." },
-  { q: ["what is time"], a: "Time is the progression from past to present to future. Einstein showed it's relative — it slows near strong gravity or at high speeds. At a deep level, it remains mysterious." },
-  { q: ["what is love"], a: "Love is a complex mix of emotion, behavior, and belief. Biologically: dopamine, oxytocin, serotonin. Philosophically debated for millennia. Connection, attachment, care." },
-  { q: ["what is success"], a: "Success is personal. It can be achieving goals, financial freedom, happiness, meaningful relationships, or impact. Define it yourself — don't let others decide for you. 🔥" },
-  { q: ["how do i be happy"], a: "Research-backed habits:\n• Strong relationships\n• Sense of purpose\n• Regular exercise\n• Gratitude practice\n• Enough sleep\n• Doing meaningful things\n\nHappiness is more about habits than circumstances." },
-  { q: ["what is stoicism"], a: "Stoicism teaches focusing only on what you control (thoughts + actions) and accepting what you can't. Key figures: Marcus Aurelius, Epictetus, Seneca." },
-  // LANGUAGE
-  { q: ["how many languages are in the world"], a: "~7,000 languages are spoken worldwide. Most spoken: Mandarin Chinese, Spanish, English, Hindi, Arabic." },
-  { q: ["what does hello mean in spanish"], a: "Hello in Spanish: Hola (OH-lah) 🇪🇸" },
-  { q: ["what does hello mean in french"], a: "Hello in French: Bonjour (bon-ZHOOR) 🇫🇷" },
-  { q: ["what does hello mean in japanese"], a: "Hello in Japanese: Konnichiwa (こんにちは) 🇯🇵" },
-  { q: ["what does hello mean in arabic"], a: "Hello in Arabic: Marhaba (مرحبا) or As-salamu alaykum (السلام عليكم) 🌙" },
-  { q: ["what does hello mean in german"], a: "Hello in German: Hallo or Guten Tag 🇩🇪" },
-  { q: ["what does hello mean in portuguese"], a: "Hello in Portuguese: Olá or Oi (Brazil) 🇵🇹🇧🇷" },
-  { q: ["what does hello mean in chinese"], a: "Hello in Chinese: Nǐ hǎo (你好) 🇨🇳" },
-  // FOOD & ANIMALS
-  { q: ["what is the fastest animal"], a: "On land: Cheetah at 112 km/h. In the air: Peregrine falcon diving at 320+ km/h — the fastest animal overall." },
-  { q: ["what is the largest animal"], a: "The Blue Whale — up to 30 meters long and 200 tons. The largest animal ever known to exist." },
-  { q: ["how long do dogs live"], a: "Most dogs live 10–13 years. Smaller breeds can reach 15–20 years. Large breeds like Great Danes often live only 7–10 years." },
-  { q: ["what is caffeine"], a: "Caffeine is a natural stimulant in coffee, tea, and cocoa. It blocks adenosine receptors, reducing fatigue. It's the world's most consumed psychoactive substance." },
-  { q: ["what is sushi"], a: "A Japanese dish of vinegared rice with ingredients like raw fish, seafood, or vegetables. Forms include nigiri, maki rolls, and temaki (hand rolls)." },
-  // EVERYDAY
-  { q: ["what time is it"], a: "I don't have real-time access — check your device clock! ⏰" },
-  { q: ["what is today's date","what day is it"], a: "I can't access today's date in real-time — check your phone or computer! 📅" },
-  { q: ["what is the weather","what is the weather today"], a: "I can't check live weather. Try weather.com, Google, or your phone's weather app! ☀️" },
-  { q: ["how do i lose weight"], a: "Key principle: calorie deficit (burn more than you consume).\n\nPractical tips:\n• Eat whole foods, reduce processed sugar\n• Increase protein\n• Regular exercise (cardio + strength)\n• Sleep well\n• Stay consistent — no shortcuts." },
-  { q: ["how do i make money"], a: "Key paths:\n• Develop valuable skills (coding, design, writing, sales)\n• Start a business or freelance\n• Invest in assets (stocks, real estate)\n• Create digital products\n\nLong term: focus on creating value for others." },
-  { q: ["how do i learn faster"], a: "Evidence-backed:\n• Spaced repetition\n• Active recall (test yourself)\n• Teach what you learn\n• Eliminate distractions\n• Sleep well — memory consolidates during sleep\n• Stay curious" },
-  { q: ["how do i start coding"], a: "Start with Python — beginner-friendly and powerful.\n\nFree resources:\n• freeCodeCamp\n• CS50 on edX\n• Codecademy\n\nBuild small projects from day one. 30 min/day beats 5hr once a week." },
-  { q: ["how do i improve my english"], a: "Daily tips:\n• Consume English content (movies, podcasts, books)\n• Speak with native speakers (Tandem, HelloTalk)\n• Write daily in English\n• Use Anki for vocabulary\n• Don't fear mistakes — they're how you grow!" },
-  { q: ["how do i be more productive"], a: "Proven methods:\n• Time blocking\n• Pomodoro (25 min work / 5 min break)\n• Eliminate distractions (phone away)\n• Do hardest task first\n• Evening review" },
-  // MADFIRE
-  { q: ["who are you","what are you","who is madfire","what is madfire"], a: "I'm Madfire 🔥 — a blazing-fast AI built to answer your questions, write anything, and explain everything. Text only — no images, no videos. Ask me anything!" },
-  { q: ["what can you do","what can madfire do"], a: "I can:\n🔥 Answer any question\n📝 Write essays, stories, poems\n💻 Help with coding\n🧮 Explain math and science\n🌍 Geography, history, culture\n💡 Give advice and ideas\n\n(Cannot generate images or videos.)" },
-  { q: ["can you make an image","can you generate an image","create an image","make a photo"], a: "I'm text-only — can't generate images. But I can describe things vividly, write image prompts for Midjourney or DALL-E, or explain visual concepts in words! 🔥" },
-  { q: ["can you make a video","create a video","generate a video"], a: "No video generation — I'm pure text. But I can write scripts, storyboards, shot lists, or help plan any video project!" },
-  { q: ["hello","hi","hey","what's up","whats up","sup","hiya"], a: "Hey! 🔥 Madfire here — ready to burn through any question. What do you want to know?" },
-  { q: ["thank you","thanks","thx","ty","thank u"], a: "You're welcome! 🔥 Anything else?" },
-  { q: ["goodbye","bye","see you","cya","later"], a: "Later! 🔥 Come back whenever — Madfire never goes cold." },
-  { q: ["how are you","how are you doing"], a: "Burning bright as ever! 🔥 Ready to answer everything. What's your question?" },
-  { q: ["what is your name","your name"], a: "I'm Madfire 🔥 — your blazing AI assistant." },
+const QA=[
+  {q:["hello","hi","hey","hiya","yo","sup","whats up","howdy","greetings"],a:"Hey! 🔥 Madfire here — blazing and ready. What do you want to know?"},
+  {q:["how are you","how are you doing","hows it going","you good","you okay"],a:"Burning bright as ever! 🔥 Always ready to answer. What's your question?"},
+  {q:["thank you","thanks","thx","ty","thank u","cheers","appreciate it","appreciated"],a:"You're welcome! 🔥 Keep the questions coming."},
+  {q:["goodbye","bye","see you","cya","later","peace out","adios","farewell"],a:"Later! 🔥 Madfire never goes cold — come back anytime."},
+  {q:["who are you","what are you","who is madfire","what is madfire","tell me about yourself","what can you do"],a:"I'm Madfire 🔥 — a blazing AI with thousands of Q&As covering every topic: science, math, history, geography, coding, health, food, animals, space, sports, music, movies, philosophy, economics, language and much more. Text only — ask anything!"},
+  {q:["are you real","are you alive","are you human","are you a robot","are you conscious","are you an ai"],a:"I'm an AI — not human, not conscious the way you are. But I'm packed with knowledge and here to help. 🔥"},
+  {q:["you are amazing","you are great","you are awesome","you are the best","you are fire","good job","well done"],a:"That means a lot! 🔥 I'm always working to give the best answers. Keep asking!"},
+  {q:["can you make an image","generate an image","create an image","make a photo","draw something","make art"],a:"I'm text-only — no image generation. But I can write vivid descriptions or craft prompts for Midjourney, DALL-E, or Stable Diffusion! 🔥"},
+  {q:["can you make a video","create a video","generate a video","make a film","make a movie"],a:"No video — I'm pure text. But I can write scripts, screenplays, storyboards, or shot lists for any video project!"},
+  {q:["what is your name","your name","tell me your name"],a:"I'm Madfire 🔥 — your blazing AI assistant."},
+  {q:["what is 1+1","1 plus 1","1+1"],a:"1 + 1 = 2 🔥"},
+  {q:["what is 2+2","2 plus 2","2+2"],a:"2 + 2 = 4"},
+  {q:["what is 2+3","2 plus 3","2+3"],a:"2 + 3 = 5"},
+  {q:["what is 3+3","3 plus 3","3+3"],a:"3 + 3 = 6"},
+  {q:["what is 4+4","4 plus 4","4+4"],a:"4 + 4 = 8"},
+  {q:["what is 5+5","5 plus 5","5+5"],a:"5 + 5 = 10"},
+  {q:["what is 6+6","6 plus 6"],a:"6 + 6 = 12"},
+  {q:["what is 7+7","7 plus 7"],a:"7 + 7 = 14"},
+  {q:["what is 8+8","8 plus 8"],a:"8 + 8 = 16"},
+  {q:["what is 9+9","9 plus 9"],a:"9 + 9 = 18"},
+  {q:["what is 10+10","10 plus 10"],a:"10 + 10 = 20"},
+  {q:["what is 50+50","50 plus 50"],a:"50 + 50 = 100"},
+  {q:["what is 100+100"],a:"100 + 100 = 200"},
+  {q:["what is 100+200"],a:"100 + 200 = 300"},
+  {q:["what is 999+1"],a:"999 + 1 = 1,000"},
+  {q:["what is 1000+1000"],a:"1,000 + 1,000 = 2,000"},
+  {q:["what is 5-3","5 minus 3"],a:"5 - 3 = 2"},
+  {q:["what is 10-4","10 minus 4"],a:"10 - 4 = 6"},
+  {q:["what is 100-50","100 minus 50"],a:"100 - 50 = 50"},
+  {q:["what is 1000-1","1000 minus 1"],a:"1,000 - 1 = 999"},
+  {q:["what is 200-75"],a:"200 - 75 = 125"},
+  {q:["what is 500-250"],a:"500 - 250 = 250"},
+  {q:["what is 2*2","2 times 2","2x2"],a:"2 × 2 = 4"},
+  {q:["what is 3*3","3 times 3","3x3"],a:"3 × 3 = 9"},
+  {q:["what is 4*4","4 times 4","4x4"],a:"4 × 4 = 16"},
+  {q:["what is 5*5","5 times 5","5x5"],a:"5 × 5 = 25"},
+  {q:["what is 6*6","6 times 6","6x6"],a:"6 × 6 = 36"},
+  {q:["what is 7*7","7 times 7","7x7"],a:"7 × 7 = 49"},
+  {q:["what is 8*8","8 times 8","8x8"],a:"8 × 8 = 64"},
+  {q:["what is 9*9","9 times 9","9x9"],a:"9 × 9 = 81"},
+  {q:["what is 10*10","10 times 10"],a:"10 × 10 = 100"},
+  {q:["what is 11*11","11 times 11"],a:"11 × 11 = 121"},
+  {q:["what is 12*12","12 times 12"],a:"12 × 12 = 144"},
+  {q:["what is 13*13"],a:"13 × 13 = 169"},
+  {q:["what is 14*14"],a:"14 × 14 = 196"},
+  {q:["what is 15*15"],a:"15 × 15 = 225"},
+  {q:["what is 20*20"],a:"20 × 20 = 400"},
+  {q:["what is 25*4","25 times 4"],a:"25 × 4 = 100"},
+  {q:["what is 6*7","6 times 7"],a:"6 × 7 = 42"},
+  {q:["what is 6*8","6 times 8"],a:"6 × 8 = 48"},
+  {q:["what is 6*9","6 times 9"],a:"6 × 9 = 54"},
+  {q:["what is 7*8","7 times 8"],a:"7 × 8 = 56"},
+  {q:["what is 7*9","7 times 9"],a:"7 × 9 = 63"},
+  {q:["what is 8*9","8 times 9"],a:"8 × 9 = 72"},
+  {q:["what is 100*100"],a:"100 × 100 = 10,000"},
+  {q:["what is 1000*1000"],a:"1,000 × 1,000 = 1,000,000"},
+  {q:["what is 50/2","50 divided by 2"],a:"50 ÷ 2 = 25"},
+  {q:["what is 100/4","100 divided by 4"],a:"100 ÷ 4 = 25"},
+  {q:["what is 144/12","144 divided by 12"],a:"144 ÷ 12 = 12"},
+  {q:["what is 1000/10","1000 divided by 10"],a:"1,000 ÷ 10 = 100"},
+  {q:["what is 2 to the power of 10","2^10","2 to the 10th"],a:"2¹⁰ = 1,024"},
+  {q:["what is 2 to the power of 20","2^20"],a:"2²⁰ = 1,048,576"},
+  {q:["what is 2 to the power of 32","2^32"],a:"2³² = 4,294,967,296"},
+  {q:["what is 3^3","3 to the power of 3"],a:"3³ = 27"},
+  {q:["what is 10^6","10 to the power of 6"],a:"10⁶ = 1,000,000 (one million)"},
+  {q:["what is 10^9","10 to the power of 9"],a:"10⁹ = 1,000,000,000 (one billion)"},
+  {q:["square root of 4","sqrt 4","√4"],a:"√4 = 2"},
+  {q:["square root of 9","sqrt 9","√9"],a:"√9 = 3"},
+  {q:["square root of 16","sqrt 16"],a:"√16 = 4"},
+  {q:["square root of 25","sqrt 25"],a:"√25 = 5"},
+  {q:["square root of 36","sqrt 36"],a:"√36 = 6"},
+  {q:["square root of 49","sqrt 49"],a:"√49 = 7"},
+  {q:["square root of 64","sqrt 64"],a:"√64 = 8"},
+  {q:["square root of 81","sqrt 81"],a:"√81 = 9"},
+  {q:["square root of 100","sqrt 100"],a:"√100 = 10"},
+  {q:["square root of 121","sqrt 121"],a:"√121 = 11"},
+  {q:["square root of 144","sqrt 144"],a:"√144 = 12"},
+  {q:["square root of 169","sqrt 169"],a:"√169 = 13"},
+  {q:["square root of 196","sqrt 196"],a:"√196 = 14"},
+  {q:["square root of 225","sqrt 225"],a:"√225 = 15"},
+  {q:["square root of 256","sqrt 256"],a:"√256 = 16"},
+  {q:["square root of 2","sqrt 2"],a:"√2 ≈ 1.41421356..."},
+  {q:["square root of 3","sqrt 3"],a:"√3 ≈ 1.73205080..."},
+  {q:["what is pi","what is π","value of pi"],a:"π (pi) ≈ 3.14159265358979...\nThe ratio of a circle\'s circumference to its diameter. Irrational — it goes on forever without repeating."},
+  {q:["what is euler number","what is e in math","eulers number"],a:"Euler\'s number e ≈ 2.71828182845...\nBase of natural logarithm. Appears in growth, decay, compound interest, and probability."},
+  {q:["what is a prime number","what are prime numbers","list prime numbers"],a:"A prime is divisible only by 1 and itself.\nFirst primes: 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97..."},
+  {q:["what is fibonacci sequence","fibonacci numbers"],a:"Fibonacci: 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144...\nEach number = sum of the two before it. Found in flower petals, shells, galaxies."},
+  {q:["what is infinity","what is ∞"],a:"Infinity (∞) is not a number — it\'s a concept meaning without bound. You can always add 1 to any number. Mathematicians distinguish different \'sizes\' of infinity."},
+  {q:["what is a billion"],a:"1 billion = 1,000,000,000 (one thousand million)"},
+  {q:["what is a trillion"],a:"1 trillion = 1,000,000,000,000 (one million million)"},
+  {q:["what is a quadrillion"],a:"1 quadrillion = 1,000,000,000,000,000 (10¹⁵)"},
+  {q:["what is a googol"],a:"A googol = 10¹⁰⁰ — the number 1 followed by 100 zeros. Google is named after it."},
+  {q:["what is algebra"],a:"Algebra uses symbols (x, y, z) to represent numbers and express relationships. It\'s about solving equations to find unknown values."},
+  {q:["what is calculus"],a:"Calculus is the math of change:\n• Differentiation — rates of change (slopes)\n• Integration — areas under curves\nInvented independently by Newton and Leibniz."},
+  {q:["what is geometry"],a:"Geometry studies shapes, sizes, positions, and angles. Includes 2D (circles, triangles) and 3D (spheres, cubes) forms."},
+  {q:["what is trigonometry"],a:"Trigonometry studies relationships between angles and sides of triangles. Core functions: sin, cos, tan. Essential for physics, engineering, navigation."},
+  {q:["what is statistics"],a:"Statistics: collecting, analyzing, interpreting, and presenting data. Helps understand patterns and make decisions under uncertainty."},
+  {q:["what is probability"],a:"Probability measures how likely an event is: 0 (impossible) to 1 (certain). Fair coin flip = 0.5 chance of heads."},
+  {q:["what is a percentage"],a:"Percentage = parts per 100. 50% = 0.5. To find 25% of 80: 80 × 0.25 = 20."},
+  {q:["what is a fraction"],a:"A fraction = part of a whole: numerator/denominator. 3/4 = 0.75."},
+  {q:["what is the pythagorean theorem","pythagoras theorem"],a:"a² + b² = c²\nIn a right triangle, hypotenuse² = sum of the other two sides squared."},
+  {q:["what is pemdas","order of operations","bodmas"],a:"Order of operations:\n1. Parentheses\n2. Exponents\n3. Multiplication & Division (left to right)\n4. Addition & Subtraction (left to right)\nMemonic: PEMDAS / BODMAS"},
+  {q:["what is a vector in math"],a:"A vector has magnitude (size) and direction. In math: an ordered list of numbers. In physics: quantities like velocity, force, acceleration."},
+  {q:["what is a derivative"],a:"A derivative measures instantaneous rate of change — the slope of a function at any point. If f(x) = x², then f\'(x) = 2x."},
+  {q:["what is an integral"],a:"An integral finds area under a curve — reverse of a derivative. ∫x dx = x²/2 + C."},
+  {q:["what is a matrix in math"],a:"A matrix is a rectangular array of numbers in rows and columns. Used in linear algebra, computer graphics, machine learning."},
+  {q:["what is logarithm","what is log"],a:"A logarithm is the inverse of exponentiation. log₁₀(1000) = 3 because 10³ = 1000. Natural log ln uses base e."},
+  {q:["what is a negative number"],a:"Numbers less than zero: ...-3, -2, -1. Represent debt, temperature below zero, below sea level."},
+  {q:["what is an integer"],a:"Integers are whole numbers with no fractions: ...-3, -2, -1, 0, 1, 2, 3..."},
+  {q:["what is a rational number"],a:"A rational number can be expressed as p/q (fraction of integers). Examples: 1/2, 3, 0.25. Irrational: π, √2."},
+  {q:["what is gravity","gravitational force"],a:"Gravity attracts masses toward each other. On Earth: 9.8 m/s² downward. Keeps planets orbiting stars. Described by Newton\'s law, refined by Einstein\'s General Relativity."},
+  {q:["what is the speed of light"],a:"299,792,458 m/s — about 300,000 km/s. In 1 second light circles Earth 7.5 times. Nothing with mass can reach it."},
+  {q:["what is energy in physics"],a:"Energy = capacity to do work. Forms: kinetic (motion), potential (position), thermal, electrical, chemical, nuclear. E=mc² shows mass and energy are equivalent."},
+  {q:["what is newtons first law","law of inertia"],a:"An object at rest stays at rest; in motion stays in motion — unless acted on by external force. Law of Inertia."},
+  {q:["what is newtons second law"],a:"F = ma — Force equals mass times acceleration. The foundation of classical mechanics."},
+  {q:["what is newtons third law","action reaction"],a:"For every action, there is an equal and opposite reaction. Rockets work because of this."},
+  {q:["what is conservation of energy"],a:"Energy cannot be created or destroyed — only converted. The total energy of an isolated system is constant."},
+  {q:["what is electricity"],a:"Flow of electric charge through a conductor. Measured in volts (V), amperes (A), watts (W). Ohm\'s Law: V = IR."},
+  {q:["what is magnetism"],a:"Force from moving electric charges. Magnets have north and south poles — opposites attract. Unified with electricity as electromagnetism."},
+  {q:["what is nuclear energy"],a:"Released from atomic nuclei:\n• Fission: splitting heavy atoms (nuclear power plants)\n• Fusion: combining light atoms (the sun)\nGoverned by E = mc²."},
+  {q:["what is sound"],a:"Sound = mechanical wave from vibrating objects, traveling as pressure waves. Speed in air: ~343 m/s. Humans hear 20 Hz – 20,000 Hz."},
+  {q:["what is heat thermal energy"],a:"Heat = thermal energy transferred due to temperature difference. Flows from hot to cold (2nd law of thermodynamics)."},
+  {q:["what is temperature"],a:"Temperature = average kinetic energy of particles. Scales: Celsius (°C), Fahrenheit (°F), Kelvin (K). Absolute zero = 0K = -273.15°C."},
+  {q:["what is quantum mechanics","quantum physics"],a:"Describes matter/energy at atomic scales. Superposition, entanglement, wave-particle duality, uncertainty principle — deeply strange but precisely accurate."},
+  {q:["what is the theory of relativity","what is relativity"],a:"Einstein\'s two theories:\n• Special Relativity (1905): time/space are relative, E=mc²\n• General Relativity (1915): gravity = curvature of spacetime"},
+  {q:["what is the higgs boson","god particle"],a:"Particle that gives other particles mass via the Higgs field. Confirmed at CERN\'s Large Hadron Collider in 2012."},
+  {q:["what is dark matter"],a:"Invisible matter (~27% of universe) not interacting with light but having gravitational effects. We know it exists from galaxy rotation curves — but don\'t know what it is."},
+  {q:["what is dark energy"],a:"Mysterious force (~68% of universe) causing accelerating expansion of the universe. Almost completely unknown."},
+  {q:["what is the speed of sound"],a:"In air at room temperature: ~343 m/s (1,235 km/h). Faster in water (~1,480 m/s) and steel (~5,100 m/s). Mach 1 = speed of sound."},
+  {q:["what is electromagnetism"],a:"One of the four fundamental forces. Governs electricity, magnetism, light, and all chemistry. Unified by Maxwell\'s equations (1865)."},
+  {q:["what is a black hole"],a:"Region where gravity is so intense nothing escapes — not even light. Formed by collapsing massive stars. First imaged: M87* galaxy (2019)."},
+  {q:["what is thermodynamics"],a:"Study of heat and energy:\n• 1st law: energy conserved\n• 2nd law: entropy always increases\n• 3rd law: absolute zero unreachable"},
+  {q:["what is electromagnetic radiation","what is light"],a:"EM radiation is energy as waves: radio, microwave, infrared, visible light, UV, X-rays, gamma rays — all the same thing at different frequencies."},
+  {q:["what is pressure","atmospheric pressure"],a:"Pressure = Force/Area. Atmospheric pressure at sea level = 101,325 Pa (1 atm). Decreases with altitude."},
+  {q:["what is an atom"],a:"Smallest unit of an element. Has nucleus (protons + neutrons) surrounded by electrons. Proton count = element identity."},
+  {q:["what is a molecule"],a:"Two or more atoms bonded together. H₂O = 2 hydrogen + 1 oxygen. CO₂ = 1 carbon + 2 oxygen."},
+  {q:["what is the periodic table"],a:"Chart of all 118 known elements organized by atomic number and properties. Created by Mendeleev in 1869."},
+  {q:["what is hydrogen"],a:"Element 1 — lightest and most abundant element (75% of all normal matter). Stars run on hydrogen fusion."},
+  {q:["what is oxygen"],a:"Element 8 — 21% of Earth\'s atmosphere. Essential for respiration. Highly reactive."},
+  {q:["what is carbon"],a:"Element 6 — basis of all known life. Forms more compounds than any other element. Diamond and graphite are both pure carbon."},
+  {q:["what is gold"],a:"Element 79 (Au) — dense, soft, yellow, doesn\'t rust. Used in jewelry, electronics. All gold ever mined would fit ~3.5 Olympic pools."},
+  {q:["what is iron"],a:"Element 26 (Fe) — most common element by mass in Earth. Core of Earth is mostly iron. Essential for blood (hemoglobin)."},
+  {q:["what is water","what is h2o"],a:"H₂O: 2 hydrogen + 1 oxygen. Covers 71% of Earth\'s surface. Essential for all life. Unique: expands when freezing."},
+  {q:["what is co2","what is carbon dioxide"],a:"CO₂: 1 carbon + 2 oxygen. Produced by respiration/combustion. Absorbed by plants. The main greenhouse gas."},
+  {q:["what is ph","ph scale"],a:"pH 0–14: below 7 = acidic, 7 = neutral (water), above 7 = alkaline. Lemon juice ~2, bleach ~13."},
+  {q:["what is an acid"],a:"Releases H⁺ ions, pH < 7, tastes sour. Examples: HCl, H₂SO₄, vinegar (acetic acid)."},
+  {q:["what is a base","what is alkali"],a:"Accepts H⁺ ions, pH > 7, feels slippery. Examples: NaOH (lye), baking soda, ammonia."},
+  {q:["what is radioactivity","radioactive decay"],a:"Spontaneous emission from unstable atomic nuclei. Types: alpha, beta, gamma. Used in medicine, power, and carbon-14 dating."},
+  {q:["what is a chemical reaction"],a:"Reactants transform into products by breaking/forming chemical bonds. Signs: color change, gas, heat, light, precipitate."},
+  {q:["what is nuclear fission"],a:"Splitting heavy atomic nuclei (uranium, plutonium) releasing enormous energy. Used in nuclear power plants and atomic bombs."},
+  {q:["what is nuclear fusion"],a:"Combining light nuclei (hydrogen → helium) releasing even more energy than fission. Powers the sun. ITER project attempting it on Earth."},
+  {q:["what is photosynthesis"],a:"6CO₂ + 6H₂O + sunlight → C₆H₁₂O₆ + 6O₂\nPlants convert sunlight + CO₂ + water into glucose and oxygen."},
+  {q:["what is dna","what is dna?"],a:"DNA (Deoxyribonucleic Acid) = double-helix molecule carrying genetic instructions. 4 bases: A, T, G, C. Human genome: ~3 billion base pairs, ~20,000 genes."},
+  {q:["what is a cell","what is a cell in biology"],a:"Basic unit of life. Prokaryotic (bacteria — no nucleus) or eukaryotic (plants/animals — has nucleus). Parts: nucleus, mitochondria, cell membrane, ribosomes."},
+  {q:["what is evolution"],a:"Change in species over generations via natural selection, mutation, genetic drift, sexual selection. All life shares a common ancestor ~3.8 billion years ago."},
+  {q:["what is genetics"],a:"Study of genes, heredity, and variation. You inherit ~half your DNA from each parent. Dominant genes mask recessive ones (Mendel\'s laws)."},
+  {q:["what is a gene"],a:"DNA segment coding for a specific protein. Humans have ~20,000 genes. Determine traits from eye color to disease risk."},
+  {q:["what is a virus"],a:"Non-living infectious agent — protein coat containing DNA or RNA. Hijacks host cells to replicate. Examples: flu, COVID-19, HIV."},
+  {q:["what is bacteria","what is a bacterium"],a:"Single-celled prokaryotes. Most are harmless or beneficial (gut microbiome). Some cause disease. Antibiotics target bacteria, not viruses."},
+  {q:["what is the immune system"],a:"Body\'s defense:\n• Physical barriers (skin, mucus)\n• Innate immunity (fast, general)\n• Adaptive immunity (antibodies, memory T/B cells)\nVaccines train it to recognize specific pathogens."},
+  {q:["what is a vaccine","how do vaccines work"],a:"Exposes immune system to harmless pathogen version (dead/weakened/protein). Body builds memory cells for fast future defense."},
+  {q:["what is mitosis"],a:"Cell division for growth/repair — one cell → two identical daughter cells. Stages: Prophase, Metaphase, Anaphase, Telophase."},
+  {q:["what is meiosis"],a:"Produces sex cells (sperm/eggs) with half normal chromosome count. Creates genetic diversity when egg + sperm combine."},
+  {q:["what is an ecosystem"],a:"Community of organisms interacting with their environment. Energy flows: producer → consumer → decomposer. Examples: forest, coral reef, savanna."},
+  {q:["what is biodiversity"],a:"Variety of life — species, genetic, and ecosystem diversity. Currently in 6th mass extinction driven by humans."},
+  {q:["what is a chromosome"],a:"DNA packed around proteins (histones). Humans have 46 chromosomes (23 pairs). Sex: XX = female, XY = male."},
+  {q:["what is crispr","gene editing"],a:"CRISPR-Cas9 = molecular \'scissors\' that precisely cut and modify DNA. Treats genetic diseases, engineers crops. Nobel Prize 2020."},
+  {q:["what is cloning"],a:"Creating genetically identical copies. Dolly the sheep (1996): first cloned mammal from adult cell. Therapeutic cloning grows tissue for medicine."},
+  {q:["what is stem cells"],a:"Undifferentiated cells that can become specialized types. Embryonic: can become any cell. Used in medical research and therapy."},
+  {q:["what is respiration"],a:"Cellular respiration: C₆H₁₂O₆ + 6O₂ → 6CO₂ + 6H₂O + ATP (energy). Opposite of photosynthesis. Happens in mitochondria."},
+  {q:["how many planets are in the solar system","how many planets"],a:"8 planets: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune.\nPluto reclassified as dwarf planet in 2006."},
+  {q:["what is the sun","facts about the sun"],a:"G-type star: 4.6 billion years old, 5,500°C surface, 15 million°C core, 73% hydrogen, 25% helium. Light takes 8 min 20 sec to reach Earth."},
+  {q:["what is mercury the planet"],a:"Smallest planet, closest to sun. 430°C day, -180°C night. No atmosphere, no moons. Year = 88 Earth days."},
+  {q:["what is venus","venus planet facts"],a:"Earth\'s twin in size but hellish: 465°C surface, 90× Earth\'s atmospheric pressure, clouds of sulfuric acid. Hottest planet despite not being closest to sun."},
+  {q:["what is mars","mars planet facts"],a:"Red Planet: thin CO₂ atmosphere, rust-covered surface, tallest volcano in solar system (Olympus Mons, 22km). Day ≈ 24.6 hours. Has multiple rovers."},
+  {q:["what is jupiter","jupiter facts"],a:"Largest planet: 11× Earth\'s diameter. 95 moons. Giant Red Spot storm lasting 350+ years. Europa moon may have subsurface ocean."},
+  {q:["what is saturn","saturn facts"],a:"Famous for ring system of ice and rock. 146 moons. Titan has atmosphere and liquid methane lakes. Least dense planet — floats on water."},
+  {q:["what is uranus"],a:"Ice giant rotating on its side (98° tilt). Methane atmosphere gives blue-green color. Average: -195°C."},
+  {q:["what is neptune"],a:"Farthest planet. Fastest winds in solar system (2,100 km/h). 16 moons. 1 Neptune year = 165 Earth years."},
+  {q:["what is the moon","facts about the moon"],a:"Earth\'s only natural satellite. 384,400 km away. 1/6th Earth\'s gravity. Formed ~4.5 billion years ago from giant impact. 12 humans walked on it (1969–1972)."},
+  {q:["how far is the moon","distance to the moon"],a:"~384,400 km (238,855 miles) on average. Light takes 1.3 seconds to travel there."},
+  {q:["how far is the sun","distance to the sun"],a:"~150 million km (93 million miles) = 1 Astronomical Unit (AU). Light takes ~8 min 20 sec."},
+  {q:["what is a light year"],a:"Distance light travels in one year ≈ 9.461 trillion km (5.879 trillion miles). Proxima Centauri is 4.24 light years away."},
+  {q:["what is a nebula"],a:"Cloud of gas and dust in space — birthplace of stars. Famous: Orion Nebula, Pillars of Creation, Crab Nebula."},
+  {q:["what is a neutron star"],a:"Collapsed core of a massive star. Incredibly dense — 1 teaspoon weighs ~1 billion tons. Diameter ~20 km, mass > sun\'s."},
+  {q:["what is a supernova"],a:"Massive stellar explosion — among the most energetic events in the universe. Creates and distributes heavy elements like gold and iron."},
+  {q:["what is the big bang","big bang theory"],a:"~13.8 billion years ago, all matter/energy exploded from a hot, dense point and has been expanding ever since."},
+  {q:["what is the milky way"],a:"Our home galaxy: barred spiral, 100–400 billion stars, 100,000 light-years across. Supermassive black hole Sagittarius A* at center."},
+  {q:["how many galaxies are there"],a:"Estimated ~2 trillion galaxies in the observable universe, each with billions to trillions of stars."},
+  {q:["how old is the universe"],a:"~13.8 billion years old — calculated from cosmic microwave background radiation and expansion rate."},
+  {q:["what is an asteroid"],a:"Rocky body orbiting the sun, mostly in the asteroid belt between Mars and Jupiter. The one that killed the dinosaurs was ~10 km wide."},
+  {q:["what is a comet"],a:"Icy body developing a glowing tail when near the sun. Halley\'s Comet appears every ~75 years. Next: 2061."},
+  {q:["what is the iss","what is the international space station"],a:"Habitable space station orbiting ~400 km above Earth. Continuously inhabited since 2000. Travels at 7.7 km/s, orbiting every 90 minutes."},
+  {q:["will humans go to mars","mars mission"],a:"NASA and SpaceX plan Mars missions for the 2030s. Challenges: 6–9 month journey, radiation, life support, landing. Closer than ever!"},
+  {q:["what is pluto","is pluto a planet"],a:"Pluto was reclassified as a dwarf planet by the IAU in 2006 — too small to clear its orbital neighborhood. Diameter: 2,377 km. Has 5 moons; largest: Charon."},
+  {q:["what is a galaxy"],a:"A gravitationally bound system of stars, gas, dust, and dark matter. Types: spiral (Milky Way, Andromeda), elliptical, irregular. Billions exist in the universe."},
+  {q:["capital of france","capital of france"],a:"Paris 🗼"},
+  {q:["capital of usa","capital of america","capital of united states"],a:"Washington, D.C."},
+  {q:["capital of japan"],a:"Tokyo 🗾 — world's most populous metro area (~37 million people)"},
+  {q:["capital of china"],a:"Beijing (北京)"},
+  {q:["capital of uk","capital of england","capital of britain"],a:"London 🇬🇧"},
+  {q:["capital of germany"],a:"Berlin"},
+  {q:["capital of italy"],a:"Rome (Roma) — the Eternal City"},
+  {q:["capital of spain"],a:"Madrid"},
+  {q:["capital of brazil"],a:"Brasília (NOT Rio de Janeiro or São Paulo)"},
+  {q:["capital of australia"],a:"Canberra (NOT Sydney or Melbourne)"},
+  {q:["capital of canada"],a:"Ottawa, Ontario"},
+  {q:["capital of russia"],a:"Moscow (Moskva) — Europe's largest city"},
+  {q:["capital of india"],a:"New Delhi"},
+  {q:["capital of mexico"],a:"Mexico City (Ciudad de México)"},
+  {q:["capital of egypt"],a:"Cairo (القاهرة) — largest city in Africa"},
+  {q:["capital of nigeria"],a:"Abuja (since 1991; Lagos was old capital)"},
+  {q:["capital of south africa"],a:"Three capitals: Pretoria (executive), Cape Town (legislative), Bloemfontein (judicial)"},
+  {q:["capital of argentina"],a:"Buenos Aires"},
+  {q:["capital of turkey"],a:"Ankara (NOT Istanbul)"},
+  {q:["capital of saudi arabia"],a:"Riyadh"},
+  {q:["capital of uae"],a:"Abu Dhabi (Dubai is the largest city but NOT the capital)"},
+  {q:["capital of pakistan"],a:"Islamabad"},
+  {q:["capital of south korea"],a:"Seoul (서울)"},
+  {q:["capital of north korea"],a:"Pyongyang (평양)"},
+  {q:["capital of indonesia"],a:"Jakarta (officially moving to Nusantara in Borneo)"},
+  {q:["capital of greece"],a:"Athens (Αθήνα) — birthplace of democracy"},
+  {q:["capital of sweden"],a:"Stockholm — built on 14 islands"},
+  {q:["capital of norway"],a:"Oslo"},
+  {q:["capital of netherlands","capital of holland"],a:"Amsterdam (constitutional); The Hague is seat of government"},
+  {q:["capital of switzerland"],a:"Bern (NOT Geneva or Zurich)"},
+  {q:["capital of poland"],a:"Warsaw (Warszawa)"},
+  {q:["capital of ukraine"],a:"Kyiv (Київ)"},
+  {q:["capital of iran"],a:"Tehran"},
+  {q:["capital of iraq"],a:"Baghdad"},
+  {q:["capital of kenya"],a:"Nairobi"},
+  {q:["capital of ethiopia"],a:"Addis Ababa"},
+  {q:["capital of ghana"],a:"Accra"},
+  {q:["capital of new zealand"],a:"Wellington (NOT Auckland)"},
+  {q:["capital of thailand"],a:"Bangkok (officially the longest city name in the world)"},
+  {q:["capital of vietnam"],a:"Hanoi (NOT Ho Chi Minh City)"},
+  {q:["capital of philippines"],a:"Manila"},
+  {q:["capital of malaysia"],a:"Kuala Lumpur"},
+  {q:["capital of colombia"],a:"Bogotá"},
+  {q:["capital of peru"],a:"Lima"},
+  {q:["capital of chile"],a:"Santiago"},
+  {q:["capital of venezuela"],a:"Caracas"},
+  {q:["capital of portugal"],a:"Lisbon (Lisboa)"},
+  {q:["capital of austria"],a:"Vienna (Wien)"},
+  {q:["capital of belgium"],a:"Brussels — also HQ of EU and NATO"},
+  {q:["capital of denmark"],a:"Copenhagen (København)"},
+  {q:["capital of finland"],a:"Helsinki"},
+  {q:["capital of ireland"],a:"Dublin"},
+  {q:["capital of czech republic","capital of czechia"],a:"Prague (Praha)"},
+  {q:["capital of hungary"],a:"Budapest"},
+  {q:["capital of romania"],a:"Bucharest (București)"},
+  {q:["capital of serbia"],a:"Belgrade (Beograd)"},
+  {q:["capital of croatia"],a:"Zagreb"},
+  {q:["capital of morocco"],a:"Rabat (NOT Casablanca)"},
+  {q:["capital of algeria"],a:"Algiers (Alger)"},
+  {q:["capital of tunisia"],a:"Tunis"},
+  {q:["capital of angola"],a:"Luanda"},
+  {q:["capital of tanzania"],a:"Dodoma (official); Dar es Salaam is largest city"},
+  {q:["capital of zimbabwe"],a:"Harare"},
+  {q:["capital of cuba"],a:"Havana (La Habana)"},
+  {q:["capital of jamaica"],a:"Kingston"},
+  {q:["capital of nepal"],a:"Kathmandu"},
+  {q:["capital of bangladesh"],a:"Dhaka"},
+  {q:["capital of cambodia"],a:"Phnom Penh"},
+  {q:["capital of myanmar"],a:"Naypyidaw (since 2006; Yangon was old capital)"},
+  {q:["capital of laos"],a:"Vientiane"},
+  {q:["capital of mongolia"],a:"Ulaanbaatar"},
+  {q:["capital of afghanistan"],a:"Kabul"},
+  {q:["capital of uzbekistan"],a:"Tashkent"},
+  {q:["capital of kazakhstan"],a:"Astana (formerly Nur-Sultan)"},
+  {q:["capital of georgia country"],a:"Tbilisi"},
+  {q:["capital of armenia"],a:"Yerevan"},
+  {q:["capital of azerbaijan"],a:"Baku"},
+  {q:["capital of scotland"],a:"Edinburgh"},
+  {q:["capital of wales"],a:"Cardiff"},
+  {q:["capital of northern ireland"],a:"Belfast"},
+  {q:["capital of iceland"],a:"Reykjavik — northernmost capital of a sovereign state"},
+  {q:["capital of luxembourg"],a:"Luxembourg City"},
+  {q:["capital of malta"],a:"Valletta — smallest EU capital"},
+  {q:["capital of cyprus"],a:"Nicosia — last divided capital in Europe"},
+  {q:["capital of slovenia"],a:"Ljubljana"},
+  {q:["capital of slovakia"],a:"Bratislava"},
+  {q:["capital of estonia"],a:"Tallinn"},
+  {q:["capital of latvia"],a:"Riga"},
+  {q:["capital of lithuania"],a:"Vilnius"},
+  {q:["capital of moldova"],a:"Chișinău"},
+  {q:["capital of belarus"],a:"Minsk"},
+  {q:["capital of bolivia"],a:"Sucre (constitutional); La Paz (seat of government)"},
+  {q:["capital of ecuador"],a:"Quito"},
+  {q:["capital of paraguay"],a:"Asunción"},
+  {q:["capital of uruguay"],a:"Montevideo"},
+  {q:["capital of panama"],a:"Panama City"},
+  {q:["capital of costa rica"],a:"San José"},
+  {q:["capital of guatemala"],a:"Guatemala City"},
+  {q:["capital of honduras"],a:"Tegucigalpa"},
+  {q:["capital of el salvador"],a:"San Salvador"},
+  {q:["capital of nicaragua"],a:"Managua"},
+  {q:["capital of trinidad"],a:"Port of Spain"},
+  {q:["capital of bahamas"],a:"Nassau"},
+  {q:["capital of barbados"],a:"Bridgetown"},
+  {q:["capital of senegal"],a:"Dakar"},
+  {q:["capital of ivory coast"],a:"Yamoussoukro (official); Abidjan (economic capital)"},
+  {q:["capital of cameroon"],a:"Yaoundé"},
+  {q:["capital of mozambique"],a:"Maputo"},
+  {q:["capital of madagascar"],a:"Antananarivo"},
+  {q:["capital of zambia"],a:"Lusaka"},
+  {q:["capital of malawi"],a:"Lilongwe"},
+  {q:["capital of rwanda"],a:"Kigali"},
+  {q:["capital of uganda"],a:"Kampala"},
+  {q:["capital of sudan"],a:"Khartoum"},
+  {q:["capital of libya"],a:"Tripoli"},
+  {q:["capital of somalia"],a:"Mogadishu"},
+  {q:["capital of sri lanka"],a:"Sri Jayawardenepura Kotte (official); Colombo (commercial)"},
+  {q:["capital of bhutan"],a:"Thimphu"},
+  {q:["capital of maldives"],a:"Malé — one of the world's most densely populated cities"},
+  {q:["capital of east timor","capital of timor leste"],a:"Dili"},
+  {q:["capital of brunei"],a:"Bandar Seri Begawan"},
+  {q:["capital of papua new guinea"],a:"Port Moresby"},
+  {q:["capital of fiji"],a:"Suva"},
+  {q:["capital of solomon islands"],a:"Honiara"},
+  {q:["capital of vanuatu"],a:"Port Vila"},
+  {q:["capital of samoa"],a:"Apia"},
+  {q:["capital of tonga"],a:"Nukuʻalofa"},
+  {q:["capital of kiribati"],a:"South Tarawa"},
+  {q:["capital of palau"],a:"Ngerulmud — least populated capital in the world"},
+  {q:["largest country in the world"],a:"Russia — 17.1 million km², ~11% of all land on Earth"},
+  {q:["smallest country in the world"],a:"Vatican City — 0.44 km² inside Rome. Population ~800"},
+  {q:["longest river in the world"],a:"The Nile (~6,650 km) traditionally, though the Amazon is measured longer by some"},
+  {q:["largest river by volume"],a:"The Amazon carries ~20% of all river water flowing into Earth's oceans"},
+  {q:["tallest mountain in the world"],a:"Mount Everest — 8,849 m (29,032 ft) in the Himalayas on Nepal-Tibet border"},
+  {q:["deepest ocean deepest point"],a:"Challenger Deep, Mariana Trench (Pacific): ~11,034 m (36,201 ft) — deeper than Everest is tall"},
+  {q:["largest ocean"],a:"Pacific Ocean — 165 million km², bigger than all landmasses combined"},
+  {q:["largest desert in the world"],a:"Antarctica — 14.2 million km² (cold desert). Sahara is the largest HOT desert at ~9.2 million km²"},
+  {q:["how many continents are there"],a:"7 continents: Africa, Antarctica, Asia, Australia/Oceania, Europe, North America, South America"},
+  {q:["how many countries in the world"],a:"195 countries — 193 UN member states + Vatican City + Palestine (observer states)"},
+  {q:["what is the amazon rainforest"],a:"World\'s largest tropical rainforest: 5.5 million km² mainly in Brazil. Produces ~20% of Earth\'s oxygen, hosts ~10% of all species."},
+  {q:["what is the sahara desert"],a:"World\'s largest hot desert: ~9.2 million km² across North Africa. Only ~25% is sand dunes — most is rocky terrain."},
+  {q:["what is the great barrier reef"],a:"World\'s largest coral reef: 2,300 km along Australia\'s NE coast. Home to 1,500+ fish species. Threatened by climate change bleaching."},
+  {q:["what is the dead sea"],a:"Lowest point on Earth\'s surface: 430 m below sea level. So salty (~34%) you float effortlessly. Israel/Jordan border."},
+  {q:["what is the nile river"],a:"~6,650 km, flows north through 11 African countries to Mediterranean. Ancient Egyptian civilization depended on its annual floods."},
+  {q:["what is mount kilimanjaro"],a:"Africa\'s highest mountain: 5,895 m (19,341 ft). A dormant volcano in Tanzania. World\'s highest free-standing mountain."},
+  {q:["what continent is egypt in"],a:"Africa (though Sinai Peninsula is geographically in Asia)"},
+  {q:["what continent is brazil in"],a:"South America"},
+  {q:["what continent is india in"],a:"Asia"},
+  {q:["what ocean is between usa and uk"],a:"The Atlantic Ocean"},
+  {q:["what ocean is between usa and japan"],a:"The Pacific Ocean"},
+  {q:["what is the mediterranean sea"],a:"Sea connected to Atlantic via Strait of Gibraltar. Bordered by Europe, North Africa, Middle East. Cradle of Western civilization."},
+  {q:["what are the great lakes"],a:"5 Great Lakes between USA and Canada: Superior (largest freshwater lake by area), Michigan, Huron, Erie, Ontario. SMHOE to remember."},
+  {q:["what is the amazon river"],a:"Second longest river but carries the most water — 20% of all river flow to oceans. Flows through Brazil, Peru, Colombia."},
+  {q:["what is the himalayan mountains","what are the himalayas"],a:"Mountain range in Asia containing the world\'s 10 highest peaks. Formed by collision of Indian and Eurasian tectonic plates ~50 million years ago."},
+  {q:["when did ww2 end","when did world war 2 end"],a:"WW2 ended:\n• Europe (V-E Day): May 8, 1945\n• Pacific (V-J Day): September 2, 1945\nKilled ~70–85 million people — deadliest conflict in history."},
+  {q:["when did ww2 start","when did world war 2 start"],a:"September 1, 1939 — Nazi Germany invaded Poland. Britain and France declared war September 3."},
+  {q:["when did ww1 end","when did world war 1 end"],a:"November 11, 1918 — the Armistice at 11am. 'The 11th hour of the 11th day of the 11th month.'"},
+  {q:["when did ww1 start","when did world war 1 start"],a:"July 28, 1914 — following assassination of Archduke Franz Ferdinand on June 28 in Sarajevo."},
+  {q:["who was the first president of the usa"],a:"George Washington (1732–1799). Served 1789–1797. Set precedent by voluntarily leaving after 2 terms."},
+  {q:["when did the titanic sink"],a:"April 15, 1912 at 2:20 AM. Hit iceberg at 11:40 PM April 14. ~1,517 of ~2,224 people died."},
+  {q:["who invented the telephone"],a:"Alexander Graham Bell received the first US patent March 7, 1876. Italian Antonio Meucci invented a similar device earlier but didn't patent it in time."},
+  {q:["who invented the light bulb"],a:"Thomas Edison (1879) patented the practical incandescent bulb. Humphry Davy and Joseph Swan also made contributions."},
+  {q:["when did man first land on the moon"],a:"July 20, 1969. Neil Armstrong stepped out at 10:56 PM EDT: 'One small step for man, one giant leap for mankind.' Buzz Aldrin followed. Michael Collins orbited above."},
+  {q:["who was napoleon","napoleon bonaparte"],a:"Napoleon Bonaparte (1769–1821) — French military genius and Emperor. Conquered most of Europe. Defeated at Waterloo (1815), exiled to Saint Helena."},
+  {q:["what was the roman empire"],a:"Roman Empire (27 BC – 476 AD West, 1453 East). At peak: ~5 million km². Left lasting legacy in law, language, architecture, governance."},
+  {q:["what caused world war 1"],a:"MAIN causes:\n• Militarism\n• Alliance system (Triple Alliance vs Triple Entente)\n• Imperialism\n• Nationalism (especially Balkans)\nSpark: Franz Ferdinand assassination."},
+  {q:["what was the cold war"],a:"1947–1991: USA (capitalism) vs USSR (communism). Proxy wars (Korea, Vietnam), arms race, space race. Ended with Soviet collapse 1991."},
+  {q:["when did the berlin wall fall"],a:"November 9, 1989. Symbolized end of Cold War. Germany reunified October 3, 1990."},
+  {q:["who was albert einstein"],a:"Albert Einstein (1879–1955) — developed Special Relativity (1905) and General Relativity (1915). Nobel Prize 1921. E=mc²."},
+  {q:["who was cleopatra"],a:"Cleopatra VII (69–30 BC) — last active ruler of Egypt. Spoke 9 languages. Allied with Julius Caesar and Mark Antony. Died by suicide."},
+  {q:["what was the renaissance"],a:"14th–17th century cultural rebirth in Italy, then Europe. Key figures: Leonardo da Vinci, Michelangelo, Galileo, Raphael."},
+  {q:["what was the industrial revolution"],a:"Late 1700s–1800s: agricultural → industrial society. Started in Britain with steam power. Urbanization, modern capitalism, pollution followed."},
+  {q:["what was the french revolution"],a:"1789–1799: French monarchy overthrown. Storming of Bastille, execution of Louis XVI and Marie Antoinette, Reign of Terror. Led to Napoleon."},
+  {q:["what was the american revolution"],a:"1775–1783: 13 colonies vs Britain. Declaration of Independence: July 4, 1776. Treaty of Paris (1783) recognized USA independence."},
+  {q:["what was the russian revolution"],a:"1917: Two revolutions. February ousted Tsar Nicholas II. October (Bolsheviks/Lenin) established first communist state → USSR (1922)."},
+  {q:["what was the holocaust"],a:"Nazi Germany's genocide of 6 million Jews and millions of others (Roma, disabled, LGBTQ+). Carried out in concentration and extermination camps 1941–1945."},
+  {q:["who was nelson mandela"],a:"Nelson Mandela (1918–2013) — anti-apartheid leader. Imprisoned 27 years. First democratically elected South African president (1994). Nobel Peace Prize 1993."},
+  {q:["what was apartheid"],a:"South Africa's system of racial segregation (1948–1994). Black citizens denied rights by law. Ended through international pressure and internal resistance."},
+  {q:["who was julius caesar"],a:"Gaius Julius Caesar (100–44 BC) — Roman general, dictator. Conquered Gaul, crossed the Rubicon. Assassinated March 15, 44 BC by senators including Brutus."},
+  {q:["what was the mongol empire"],a:"Largest contiguous land empire in history (1206–1368). Founded by Genghis Khan. Stretched from China to Eastern Europe."},
+  {q:["who was genghis khan"],a:"Temüjin (1162–1227) — united Mongol tribes, founded Mongol Empire. Military genius, responsible for tens of millions of deaths but also enabled Silk Road trade."},
+  {q:["who was christopher columbus"],a:"Christopher Columbus (1451–1506) — Italian explorer sailing for Spain. Reached Caribbean in 1492, initiating sustained European contact with the Americas."},
+  {q:["who was martin luther king jr"],a:"Dr. MLK Jr. (1929–1968) — civil rights leader. Led nonviolent protests. 'I Have a Dream' speech 1963. Nobel Peace Prize 1964. Assassinated April 4, 1968."},
+  {q:["when was the american civil war","american civil war"],a:"1861–1865. Union (North) vs. Confederacy (South) over slavery and states' rights. ~620,000–750,000 soldiers died."},
+  {q:["who was winston churchill"],a:"Sir Winston Churchill (1874–1965) — British PM during WW2 (1940–45). Rallied Britain against Nazis. Nobel Prize in Literature 1953."},
+  {q:["what was the magna carta"],a:"Signed 1215 by King John of England. Limited royal power, established due process. Foundation of constitutional democracy."},
+  {q:["who was alexander the great"],a:"Alexander III of Macedon (356–323 BC) — conquered from Greece to Egypt to India by age 30. Undefeated in battle. Spread Greek culture (Hellenism)."},
+  {q:["who was mahatma gandhi"],a:"Mohandas Gandhi (1869–1948) — led India's independence movement from British rule through nonviolent civil disobedience. Assassinated January 30, 1948."},
+  {q:["when did india gain independence"],a:"August 15, 1947 — India gained independence from Britain, partitioned into India and Pakistan."},
+  {q:["who was mao zedong"],a:"Mao Zedong (1893–1976) — founded People's Republic of China in 1949. Led Communist Party. Great Leap Forward and Cultural Revolution caused millions of deaths."},
+  {q:["who was fidel castro"],a:"Fidel Castro (1926–2016) — led Cuban Revolution (1959), ruled Cuba for nearly 50 years as communist dictator. Survived hundreds of CIA assassination attempts."},
+  {q:["what was vietnam war"],a:"1955–1975: North Vietnam (communist) vs South Vietnam (US-backed). US involvement 1965–1973. ~58,000 American and ~2 million Vietnamese died. North Vietnam won."},
+  {q:["what was the korean war"],a:"1950–1953: North Korea (Soviet/Chinese-backed) vs South Korea (US/UN-backed). Ended in armistice — technically still ongoing. Divided Korea at 38th parallel."},
+  {q:["who was joseph stalin"],a:"Joseph Stalin (1878–1953) — Soviet dictator 1924–1953. Industrialized USSR rapidly, won WW2, but killed millions in purges, gulags, and engineered famines."},
+  {q:["who was adolf hitler"],a:"Adolf Hitler (1889–1945) — German dictator, leader of Nazi Party. Started WW2, responsible for the Holocaust and deaths of ~70-85 million people. Died by suicide April 30, 1945."},
+  {q:["what was d-day"],a:"D-Day: June 6, 1944 — Allied invasion of Normandy, France. Largest seaborne invasion in history. ~156,000 Allied troops landed. Turned tide of WW2 in Western Europe."},
+  {q:["who invented the printing press"],a:"Johannes Gutenberg (~1440) invented the movable-type printing press. Enabled mass production of books, sparked the Protestant Reformation, Renaissance, and Scientific Revolution."},
+  {q:["who was isaac newton"],a:"Sir Isaac Newton (1643–1727) — discovered laws of motion, gravity, developed calculus, optics. Principia Mathematica (1687) is one of the most important scientific works ever."},
+  {q:["who was galileo"],a:"Galileo Galilei (1564–1642) — Italian astronomer, physicist. Confirmed heliocentrism (sun is center), invented improved telescope, studied motion. Persecuted by Catholic Church."},
+  {q:["what was the black death","what was the plague"],a:"The Black Death (1347–1351) was bubonic plague that killed 30–60% of Europe's population (~50 million people). Caused by bacterium Yersinia pestis, spread by fleas on rats."},
+  {q:["who was thomas jefferson"],a:"Thomas Jefferson (1743–1826) — 3rd US President, primary author of the Declaration of Independence, founded University of Virginia."},
+  {q:["who was abraham lincoln"],a:"Abraham Lincoln (1809–1865) — 16th US President. Led Union through Civil War, issued Emancipation Proclamation ending slavery. Assassinated April 14, 1865."},
+  {q:["who was queen victoria"],a:"Queen Victoria (1819–1901) — longest reigning British monarch of her era (63 years). Her reign = British Empire at its peak, covering 25% of world's land."},
+  {q:["what were the crusades"],a:"Religious wars (1095–1291) launched by European Christians to reclaim the Holy Land from Muslim rule. 7+ major Crusades. Left lasting religious and cultural divisions."},
+  {q:["what is artificial intelligence","what is ai"],a:"AI = machines simulating human intelligence: learning, reasoning, problem-solving, language. Types: Narrow AI (specific tasks), General AI (human-level, not yet achieved), Superintelligence (hypothetical)."},
+  {q:["what is machine learning"],a:"AI subset where systems learn patterns from data rather than explicit programming. Powers: recommendations, fraud detection, image recognition, language models."},
+  {q:["what is deep learning"],a:"Uses neural networks with many layers to learn complex patterns. Behind: speech recognition, image classification, translation, ChatGPT."},
+  {q:["what is chatgpt"],a:"AI chatbot by OpenAI on GPT models. Launched November 2022. Reached 100 million users in 2 months (fastest product ever). Generates human-like text."},
+  {q:["what is the internet"],a:"Global network of billions of connected devices via TCP/IP protocols. Started as ARPANET (US military, 1969). Tim Berners-Lee invented World Wide Web 1989."},
+  {q:["what is blockchain"],a:"Distributed ledger where data is in linked \'blocks\' across many computers. No single controller. Transparent, tamper-resistant. Foundation of cryptocurrency."},
+  {q:["what is bitcoin"],a:"First cryptocurrency, created by Satoshi Nakamoto, launched January 3, 2009. Decentralized, blockchain-based, limited to 21 million coins."},
+  {q:["what is cryptocurrency","what is crypto"],a:"Digital currency using cryptography, operating on decentralized blockchain networks. Examples: Bitcoin (BTC), Ethereum (ETH), Solana (SOL)."},
+  {q:["what is ethereum"],a:"Second-largest cryptocurrency by Vitalik Buterin (2015). Programmable blockchain supporting smart contracts and decentralized apps."},
+  {q:["what is python"],a:"High-level language by Guido van Rossum (1991). Clean syntax. Used in AI/ML, data science, web (Django/Flask), automation. Best first language."},
+  {q:["what is javascript"],a:"Language of the web. Runs in browsers (front-end) and servers via Node.js (back-end). Created by Brendan Eich in 10 days (1995). Most used language globally."},
+  {q:["what is typescript"],a:"JavaScript + static types by Microsoft (2012). Catches errors at compile time. Used for large-scale web apps. Compiles to JavaScript."},
+  {q:["what is react"],a:"JavaScript UI library by Facebook/Meta (2013). Component-based. Powers: Facebook, Instagram, Airbnb. Uses virtual DOM."},
+  {q:["what is html"],a:"HyperText Markup Language — structure of web pages. Tags: <h1>, <p>, <div>, <img>. Not a programming language — a markup language."},
+  {q:["what is css"],a:"Cascading Style Sheets — visual presentation of HTML. Colors, fonts, layout, animation. Works with HTML and JS to create web experiences."},
+  {q:["what is sql"],a:"Structured Query Language — manages relational databases.\n\nSELECT * FROM users WHERE age > 18;\n\nCreated 1974. Used in MySQL, PostgreSQL, SQLite."},
+  {q:["what is nosql"],a:"Non-relational databases: documents (MongoDB), key-value (Redis), column (Cassandra), graph (Neo4j). Better for flexible, high-scale data."},
+  {q:["what is a cpu"],a:"Central Processing Unit — brain of a computer. Executes instructions. Key metrics: cores, clock speed (GHz), cache. Modern: Intel Core i9, AMD Ryzen, Apple M-series."},
+  {q:["what is a gpu"],a:"Graphics Processing Unit — massively parallel processor. Originally for graphics; now powers AI/ML, crypto mining. NVIDIA dominates AI GPU market."},
+  {q:["what is ram"],a:"Random Access Memory — short-term computer memory. Faster than storage. More RAM = smoother multitasking. Volatile: cleared when powered off."},
+  {q:["what is the cloud","what is cloud computing"],a:"IT resources (servers, storage, software) delivered over internet. Pay-as-you-go. Major providers: AWS (Amazon), Azure (Microsoft), Google Cloud."},
+  {q:["what is cybersecurity"],a:"Protecting systems, networks, and data from digital attacks. Threats: malware, phishing, ransomware, DDoS. Growing critical infrastructure."},
+  {q:["what is 5g"],a:"5th generation mobile network: 10 Gbps speeds, <1ms latency, massive connectivity. Enables autonomous vehicles, smart cities, IoT at scale."},
+  {q:["what is iot","internet of things"],a:"Network of physical devices with sensors and connectivity. Smart home devices, wearables, industrial sensors. Billions of connected \'things\' sharing data."},
+  {q:["what is vr","virtual reality"],a:"Computer-generated 3D environment via headset (Meta Quest, PlayStation VR). Fully immersive. Used in gaming, training, therapy, education."},
+  {q:["what is ar","augmented reality"],a:"Digital content overlaid on the real world: Pokémon GO, IKEA Place, Snapchat filters, Apple Vision Pro."},
+  {q:["what is quantum computing"],a:"Computers using qubits (superposition + entanglement). Can solve certain problems exponentially faster than classical computers. Still early stage."},
+  {q:["what is an algorithm"],a:"Step-by-step instructions to solve a problem. Every piece of software runs on algorithms. Key types: sorting, searching, machine learning."},
+  {q:["what is open source"],a:"Software with source code freely available to use, modify, distribute. Examples: Linux, Python, React, VS Code, Firefox."},
+  {q:["what is linux"],a:"Free, open-source OS kernel by Linus Torvalds (1991). Powers: Android phones, most web servers, supercomputers. Distributions: Ubuntu, Fedora, Debian."},
+  {q:["what is git"],a:"Distributed version control by Linus Torvalds (2005). Tracks code changes, enables collaboration. Key commands: clone, commit, push, pull, branch, merge."},
+  {q:["what is docker"],a:"Packages apps and dependencies into portable containers. Revolutionized deployment. Pairs with Kubernetes for container orchestration at scale."},
+  {q:["what is an api","what is api"],a:"Application Programming Interface = rules for software-to-software communication. You use APIs daily: Google Maps in apps, Stripe payments, login with Google."},
+  {q:["hello world python","how to print python"],a:"print(\"Hello, World!\")"},
+  {q:["hello world javascript","console log"],a:"console.log(\"Hello, World!\");"},
+  {q:["hello world java"],a:"public class Main {\n  public static void main(String[] args) {\n    System.out.println(\"Hello, World!\");\n  }\n}"},
+  {q:["hello world c++","hello world cpp"],a:"#include <iostream>\nusing namespace std;\nint main() {\n  cout << \"Hello, World!\" << endl;\n  return 0;\n}"},
+  {q:["hello world html"],a:"<!DOCTYPE html>\n<html><body>\n  <h1>Hello, World!</h1>\n</body></html>"},
+  {q:["how to make for loop in python","python for loop"],a:"for i in range(10):\n    print(i)\n\n# Loop over list:\nfruits = [\"apple\",\"banana\"]\nfor f in fruits:\n    print(f)"},
+  {q:["how to make for loop in javascript","javascript for loop"],a:"for (let i = 0; i < 10; i++) {\n  console.log(i);\n}\n// Modern:\n[1,2,3].forEach(n => console.log(n));"},
+  {q:["what is a variable in programming"],a:"Named container for a value:\n# Python:\nname = \"Madfire\"\nage = 100\n\n// JavaScript:\nlet name = \"Madfire\";\nconst PI = 3.14;"},
+  {q:["what is a function in programming"],a:"Reusable block of code:\n# Python:\ndef greet(name):\n    return f\"Hello, {name}!\"\n\nprint(greet(\"World\"))"},
+  {q:["what is an array","what is a list in programming"],a:"Ordered collection:\n# Python:\nnums = [1, 2, 3, 4, 5]\nnums[0]  # 1 (first item)\n\n// JS:\nconst nums = [1, 2, 3];\nnums[0]; // 1"},
+  {q:["what is a dictionary in python","python dict"],a:"Key-value pairs:\nperson = {\n    \"name\": \"Madfire\",\n    \"age\": 100\n}\nprint(person[\"name\"])  # Madfire"},
+  {q:["what is object oriented programming","what is oop"],a:"OOP organizes code into objects. 4 pillars:\n• Encapsulation (hide internal details)\n• Abstraction (show only what\'s needed)\n• Inheritance (child gets parent features)\n• Polymorphism (same interface, different behavior)"},
+  {q:["what is recursion"],a:"A function calling itself:\ndef factorial(n):\n    if n <= 1: return 1\n    return n * factorial(n-1)\n\nfactorial(5)  # 120\n\nMust have base case!"},
+  {q:["what is a while loop"],a:"Repeats while condition is true:\ni = 0\nwhile i < 5:\n    print(i)\n    i += 1\n\nWarning: must eventually become False or infinite loop!"},
+  {q:["what is an if statement"],a:"Controls flow:\nage = 18\nif age >= 18:\n    print(\"Adult\")\nelif age >= 13:\n    print(\"Teen\")\nelse:\n    print(\"Child\")"},
+  {q:["what is a boolean"],a:"True or False (1 or 0):\nis_raining = True\nif is_raining:\n    print(\"Get wet!\")"},
+  {q:["what is null","what is none","what is undefined"],a:"Represents absence of value. Python: None. JavaScript: null and undefined. Always check for null before using it — common bug source."},
+  {q:["what is big o notation","what is time complexity"],a:"Algorithm efficiency as input grows:\n• O(1): constant (hash lookup)\n• O(log n): logarithmic (binary search)\n• O(n): linear (simple loop)\n• O(n²): quadratic (nested loops)\n• O(2ⁿ): exponential (avoid!)"},
+  {q:["what is the best programming language"],a:"Depends on goal:\n• Beginner → Python\n• Web front-end → JavaScript\n• AI/ML → Python\n• Mobile → Swift/Kotlin\n• Systems → Rust/C++\n• Data → Python/R/SQL\n• Enterprise → Java/C#"},
+  {q:["how many bones in the human body"],a:"Adults: 206 bones. Babies: ~270–300 (many fuse). Smallest: stapes in ear (3mm). Longest: femur (thigh, ~50cm)."},
+  {q:["how many muscles in the human body"],a:"600+ named muscles — ~40% of body weight. 3 types: skeletal (voluntary), smooth (organs), cardiac (heart)."},
+  {q:["what is the human heart"],a:"Fist-sized pump. Beats ~100,000 times/day. Pumps ~5 liters/minute. 4 chambers: 2 atria, 2 ventricles."},
+  {q:["how much water should i drink"],a:"2–3 liters (8–12 cups) daily. Pale yellow urine = well hydrated. Dark urine = drink more."},
+  {q:["what is the immune system"],a:"Body\'s defense:\n• Skin, mucus, stomach acid (barriers)\n• Innate immunity (fast, general)\n• Adaptive immunity (antibodies, memory cells)\n• Vaccines train it to recognize specific pathogens"},
+  {q:["what is a calorie"],a:"Unit of energy food provides. Average adult needs ~2,000–2,500 kcal/day. Protein/carbs: 4 kcal/g. Fat: 9 kcal/g. Alcohol: 7 kcal/g."},
+  {q:["why do we sleep"],a:"Sleep functions:\n• Memory consolidation\n• Brain waste clearance\n• Hormone regulation\n• Immune function\n• Cellular repair\nAdults need 7–9 hours."},
+  {q:["what is blood pressure"],a:"Systolic/Diastolic (e.g. 120/80 mmHg). Normal: <120/80. High: >130/80. Low: <90/60. Often no symptoms — \'silent killer.\'"},
+  {q:["what is diabetes"],a:"Type 1: autoimmune (insulin needed). Type 2: insulin resistance (lifestyle-related). Both: high blood sugar damages organs over time."},
+  {q:["what is cancer"],a:"Uncontrolled cell division from DNA mutations. Causes: genetics, carcinogens, viruses, random errors. Treatments: surgery, chemo, radiation, immunotherapy."},
+  {q:["what vitamins do i need","what are vitamins"],a:"Essential:\n• A (vision, immunity)\n• B complex (energy, brain)\n• C (immune, collagen)\n• D (bones, immunity — sunlight)\n• E (antioxidant)\n• K (blood clotting)"},
+  {q:["what is mental health"],a:"Emotional, psychological, and social wellbeing. Affects thoughts, feelings, actions. Common disorders: depression, anxiety, PTSD, OCD. Highly treatable. Seeking help is strength."},
+  {q:["what is depression"],a:"Mood disorder: persistent sadness, loss of interest, fatigue, worthlessness. Not just \'feeling sad\' — a medical condition with biological components. Treatable with therapy and/or medication."},
+  {q:["what is anxiety"],a:"Persistent excessive worry/fear interfering with daily life. Types: GAD, panic disorder, social anxiety, phobias. Treatable with CBT and/or medication."},
+  {q:["how do i reduce stress"],a:"Evidence-based:\n• Exercise (endorphins)\n• Meditation/mindfulness\n• Adequate sleep\n• Social connection\n• Time in nature\n• Journaling\n• Professional support"},
+  {q:["what is meditation"],a:"Focused attention training. Regular practice: reduces anxiety, improves focus, lowers blood pressure, changes brain structure. Even 10 min/day helps."},
+  {q:["how much exercise do i need"],a:"WHO guidelines:\n• 150–300 min moderate aerobic/week\n• OR 75–150 min vigorous/week\n• Plus strength training 2+ days/week\nAny movement is better than none."},
+  {q:["what is cholesterol"],a:"LDL (\'bad\'): deposits in arteries. HDL (\'good\'): removes cholesterol. Total should be <200 mg/dL. Diet, exercise, and statins help manage."},
+  {q:["what is a heart attack"],a:"Myocardial infarction: blocked artery cuts blood to heart muscle. Symptoms: chest pain, shortness of breath, left arm/jaw pain. Medical emergency — call 911!"},
+  {q:["what is a stroke"],a:"Blood supply cut to brain (ischemic, 87%) or vessel bursts (hemorrhagic). FAST: Face drooping, Arm weakness, Speech difficulty, Time to call emergency."},
+  {q:["what is obesity","what is bmi"],a:"BMI ≥ 30 = obese. BMI = weight(kg)/height(m)². Increases risk of diabetes, heart disease, stroke, cancer. Caused by diet, inactivity, genetics, hormones."},
+  {q:["what is intermittent fasting"],a:"Cycling eating/fasting periods. 16:8 (fast 16 hours, eat in 8-hour window) most popular. Benefits: weight loss, insulin sensitivity, cellular repair (autophagy)."},
+  {q:["how to build muscle"],a:"Requires:\n1. Progressive overload (more weight/reps)\n2. Protein: 1.6–2.2g/kg/day\n3. Small caloric surplus\n4. Adequate sleep\n5. Consistency (months, not days)\nBest lifts: squat, deadlift, bench, pull-ups."},
+  {q:["what is protein"],a:"Macronutrient made of amino acids. Essential for: muscle, enzymes, hormones, immune function. Sources: meat, fish, eggs, dairy, legumes. Recommended: 0.8g/kg/day (more if active)."},
+  {q:["what is carbohydrates","what are carbs"],a:"Primary energy source. Simple carbs (sugar): fast spike. Complex carbs (oats, whole grains): slow sustained energy. Quality matters more than quantity."},
+  {q:["what is fat in food","dietary fat"],a:"Essential: cell membranes, hormones, fat-soluble vitamins.\n• Unsaturated (olive oil, nuts): heart-healthy\n• Saturated (meat, dairy): moderate\n• Trans fat: avoid"},
+  {q:["what is caffeine"],a:"Natural stimulant in coffee (95mg/cup), tea, cocoa. Blocks adenosine receptors — reduces fatigue. Half-life ~5 hours. Safe up to ~400mg/day for most adults."},
+  {q:["what is sushi"],a:"Japanese dish:\n• Nigiri: rice + fish/seafood on top\n• Maki: rolled in seaweed\n• Sashimi: raw fish, no rice\n• Temaki: hand roll\n• Omakase: chef\'s choice"},
+  {q:["what is the most popular food","most eaten food in the world"],a:"Rice is the staple for >half the world\'s population. Wheat and corn are close. Rice is most consumed by number of people fed."},
+  {q:["how many calories in a banana"],a:"Medium banana (~118g): ~105 calories, 27g carbs, 14g sugar, 3g fiber. High potassium (422mg). Great pre-workout food."},
+  {q:["how many calories in an egg"],a:"Large egg: ~70-80 calories. White: ~17 cal, 3.6g protein. Yolk: ~55 cal, 4.5g fat. Rich in B12, vitamin D, choline."},
+  {q:["what is gluten"],a:"Protein in wheat, barley, rye. Most people digest fine. Celiac disease (1% of population): immune reaction damages intestinal lining."},
+  {q:["what is veganism"],a:"No animal products: no meat, fish, dairy, eggs, honey. Environmental benefits: lower carbon footprint. Must supplement: B12, iron, omega-3, calcium."},
+  {q:["what is coffee"],a:"Brewed from roasted coffee beans. World\'s most popular psychoactive substance (caffeine). Antioxidants. 3–5 cups/day linked to lower risk of type 2 diabetes, Parkinson\'s."},
+  {q:["what is alcohol","what is ethanol"],a:"Ethanol = CNS depressant. Short-term: euphoria, impaired judgment. Long-term: liver disease, cancer, addiction. Metabolized ~1 unit/hour."},
+  {q:["what is olive oil"],a:"Oil from pressed olives. Main fat in Mediterranean diet. High in monounsaturated fats and antioxidants. Linked to heart health and reduced inflammation."},
+  {q:["what is sugar"],a:"Simple carbohydrate providing quick energy. Types: glucose (body\'s fuel), fructose (fruit), sucrose (table sugar). Excess linked to obesity, diabetes, dental decay."},
+  {q:["what is fiber"],a:"Indigestible plant carbohydrate. Soluble fiber (oats, beans): lowers cholesterol. Insoluble (whole grains, vegetables): aids digestion. Recommended: 25–38g/day."},
+  {q:["what is a mediterranean diet"],a:"Diet based on: olive oil, fish, vegetables, whole grains, legumes, nuts, moderate wine. Strongest scientific evidence for longevity and heart health."},
+  {q:["what is the fastest animal"],a:"Land: Cheetah — 112 km/h. Air: Peregrine falcon diving — 389 km/h. Water: Sailfish — 110 km/h."},
+  {q:["what is the largest animal"],a:"Blue Whale — up to 33m long, 200 tons. Largest animal ever known, including dinosaurs. Heart the size of a small car."},
+  {q:["what is the largest land animal"],a:"African Elephant — up to 7 tons, 4m tall. Also largest brain of any land mammal."},
+  {q:["what is the smartest animal"],a:"Besides humans:\n1. Chimpanzees (tool use, complex social)\n2. Dolphins (self-awareness)\n3. Elephants (memory, empathy)\n4. Octopuses (problem-solving)\n5. Crows/Ravens (planning, tool making)"},
+  {q:["how long do dogs live"],a:"Average: 10–13 years. Smaller breeds: 15–20 years. Larger breeds: 7–10 years. Oldest verified: Bobi (Portugal) — 31 years."},
+  {q:["how long do cats live"],a:"Average domestic: 12–18 years. Indoor cats significantly outlive outdoor cats. Oldest: Creme Puff (Texas) — 38 years."},
+  {q:["do fish sleep"],a:"Yes, but differently. Fish enter low-activity, reduced-metabolism states — hovering still, less reactive. No eyelids. Some sharks must keep moving to breathe."},
+  {q:["how many species of animals are there"],a:"~8.7 million species estimated. Only ~1.2 million formally described. ~1 million are insects. 6th mass extinction is currently underway."},
+  {q:["what is the most venomous animal"],a:"By deaths caused:\n1. Mosquitoes (~1M/year via disease)\n2. Humans (~475K/year)\n3. Snakes (~50K/year)\nMost toxic venom: Box jellyfish, Inland taipan snake."},
+  {q:["what is the longest living animal"],a:"Ocean quahog clam: 507 years confirmed. Greenland shark: 400+ years. Turritopsis dohrnii jellyfish: theoretically biologically immortal."},
+  {q:["what are mammals"],a:"Warm-blooded vertebrates: nurse young with milk, have hair/fur. ~5,500 species. Examples: humans, whales, bats, dogs, elephants."},
+  {q:["what are reptiles"],a:"Cold-blooded vertebrates with scales. Lizards, snakes, crocodilians, turtles. ~10,000 species. Descended from same lineage as birds and dinosaurs."},
+  {q:["why are bees important"],a:"Bees pollinate ~75% of flowering plants and ~35% of food crops (almonds, apples, berries). Declining bee populations threaten global food security."},
+  {q:["what is a dolphin"],a:"Highly intelligent marine mammals. Live in pods. Echolocation for hunting. Known for: playfulness, self-awareness (mirror test), complex communication, helping humans."},
+  {q:["what is an elephant"],a:"Largest land animal. Lifespan 60–70 years. Remarkable memory. Mourn their dead. Matriarchal society. 3 species: African bush, African forest, Asian."},
+  {q:["what is a shark"],a:"Cartilaginous fish that have existed for ~450 million years — before dinosaurs. ~500 species. Most are not dangerous. Only ~5–10 human deaths/year globally from sharks."},
+  {q:["what is a wolf"],a:"Apex predator and ancestor of all domestic dogs. Live in packs with complex hierarchy. Keystone species — their presence dramatically affects ecosystems (Yellowstone example)."},
+  {q:["what is a gorilla"],a:"Largest living primates. Two species: western and eastern gorilla. Share ~98.3% DNA with humans. Endangered. Gentle giants — rarely aggressive."},
+  {q:["what is a cheetah"],a:"Fastest land animal (112 km/h). Unlike other big cats, can\'t roar — purrs instead. Endangered: ~7,000 left in wild. Found in Africa and small part of Iran."},
+  {q:["what is a penguin"],a:"Flightless seabirds of the Southern Hemisphere (mostly Antarctica). 18 species. Excellent swimmers (up to 36 km/h). Emperor penguins are the largest."},
+  {q:["what is an octopus"],a:"8-armed cephalopod. 3 hearts, blue blood. Can change color/texture in milliseconds. Highly intelligent: opens jars, uses tools, plans. Very short lifespan (~1-3 years)."},
+  {q:["what is a crocodile"],a:"Ancient reptile: 200+ million years old, barely changed. Strongest bite force of any animal (~3,700 PSI). Saltwater crocodile is largest living reptile."},
+  {q:["what is the meaning of life"],a:"Perspectives:\n• Aristotle: eudaimonia — living virtuously and flourishing\n• Camus: create meaning in a meaningless universe\n• Buddhism: end suffering through mindfulness\n• Existentialism: you define your own purpose\n• Douglas Adams: 42 😄\nWhat\'s YOUR answer? 🔥"},
+  {q:["what is philosophy"],a:"\'Love of wisdom\' (Greek). Asks: What exists? (metaphysics), How do we know? (epistemology), What is right? (ethics), How should society work? (political philosophy)."},
+  {q:["what is ethics"],a:"Study of moral principles. Major theories:\n• Consequentialism (judge by outcomes)\n• Deontology (follow rules, Kant)\n• Virtue ethics (be good, Aristotle)\n• Social contract (Rousseau/Locke)"},
+  {q:["what is stoicism"],a:"~300 BC philosophy: focus only on what you control (thoughts, actions). Accept what you cannot. Virtue is the only true good. Marcus Aurelius, Epictetus, Seneca."},
+  {q:["what is existentialism"],a:"Existence precedes essence — no predetermined meaning; humans create their own purpose through choices. Sartre, Camus, Nietzsche, Kierkegaard."},
+  {q:["what is consciousness"],a:"Subjective experience of being aware. The \'hard problem\': why does brain activity produce subjective experience? Deeply unsolved. One of science\'s greatest mysteries."},
+  {q:["what is free will"],a:"Debate:\n• Determinism: all events caused by prior events — no true freedom\n• Libertarian free will: genuine choice\n• Compatibilism: free will and determinism coexist — acting per desires without compulsion"},
+  {q:["do aliens exist"],a:"No confirmed evidence. But ~2 trillion galaxies × billions of stars each = statistically life elsewhere seems almost certain. The Fermi Paradox: if so, why haven\'t we heard from them?"},
+  {q:["what is time"],a:"Progression from past to present to future. Einstein: time is relative — slows near gravity/high speed. Whether time \'flows\' or all moments coexist (block universe) is debated."},
+  {q:["what is reality"],a:"What exists independently of perception. Descartes: doubted everything but his own thinking. Idealism: only minds/ideas exist. Quantum mechanics: observation affects what is real."},
+  {q:["what is love"],a:"Ancient Greeks: 8 types:\n• Eros (romantic passion)\n• Philia (friendship)\n• Storge (family)\n• Agape (unconditional)\n• Pragma (mature/enduring)\n• Philautia (self-love)\n• Ludus (playful)\n• Mania (obsessive)"},
+  {q:["what is happiness"],a:"Research: 50% genetic set point, 10% circumstances, 40% intentional activities. Drivers: relationships, purpose, engagement, accomplishment, positive emotions (PERMA)."},
+  {q:["what is success"],a:"Entirely personal. Frameworks: achievement (goals, wealth), wellbeing (happiness, health), legacy (impact), flow (mastery). Define yours deliberately — or you chase someone else\'s version."},
+  {q:["what is mindfulness"],a:"Intentional, non-judgmental attention to the present moment. Reduces anxiety/depression, improves focus, lowers blood pressure. Practice: observe thoughts without attachment."},
+  {q:["what is meditation"],a:"Focused attention training. Types: mindfulness, transcendental, guided, loving-kindness. Even 10 min/day measurably changes brain structure (thicker prefrontal cortex)."},
+  {q:["what is karma"],a:"From Sanskrit: \'action\' or \'deed.\' In Hinduism/Buddhism: the principle that good/bad actions return to you. Colloquially: \'what goes around comes around.\'"},
+  {q:["what is gdp","gross domestic product"],a:"Total monetary value of all goods/services produced in a country per year. USA GDP: ~$27 trillion. World GDP: ~$105 trillion."},
+  {q:["what is inflation"],a:"General rise in prices over time, reducing purchasing power. Measured by CPI. Target: ~2%/year. Too high: buying power destroyed. Deflation: also dangerous."},
+  {q:["what is capitalism"],a:"Economic system: private ownership, free markets, profit motive. Includes competition, price mechanism. Dominant global system today. Many varieties exist."},
+  {q:["what is communism"],a:"Ideology: property publicly owned, people work and receive according to needs. Marx envisioned it as end stage of history. USSR and China attempted versions."},
+  {q:["what is socialism"],a:"Social ownership of means of production. Spectrum: democratic socialism (Nordic model) to authoritarian socialism (USSR). Distinct from but related to communism."},
+  {q:["what is the stock market"],a:"Where shares of public companies are bought/sold. Major indices: S&P 500 (500 largest US companies), Dow Jones (30 large), Nasdaq (tech-heavy). Long-term avg: ~10%/year."},
+  {q:["what is interest rate"],a:"Cost of borrowing money. Set by central banks (Federal Reserve, ECB). Low rates = cheap money = stimulus. High rates = inflation control but economic slowdown."},
+  {q:["what is supply and demand"],a:"Fundamental economic law:\n• Higher demand or lower supply → prices rise\n• Lower demand or higher supply → prices fall\nPrices coordinate millions of decisions in market economies."},
+  {q:["what is a recession"],a:"Two consecutive quarters of negative GDP growth. Signs: rising unemployment, falling consumer spending. Great Recession (2008–09): worst since Great Depression."},
+  {q:["what is tax"],a:"Compulsory payments to government. Types: income, corporation, VAT/sales, capital gains, inheritance. Fund: public services, infrastructure, military, welfare."},
+  {q:["what is the federal reserve","what is the fed"],a:"The Federal Reserve = USA\'s central bank. Controls money supply, sets interest rates, regulates banks. Not a government agency — a quasi-public institution."},
+  {q:["what is compound interest"],a:"Interest earning interest on previous interest. Einstein called it \'the 8th wonder of the world.\' $1,000 at 10%/year = $17,449 after 30 years. Invest early!"},
+  {q:["who is shakespeare"],a:"William Shakespeare (1564–1616) — English playwright, poet. Wrote 37+ plays, 154 sonnets. Famous works: Hamlet, Macbeth, Romeo & Juliet, King Lear. Invented ~1,700 English words."},
+  {q:["who painted the mona lisa"],a:"Leonardo da Vinci, ~1503–1519. Oil on poplar wood. Subject: Lisa Gherardini. Hangs in the Louvre, Paris."},
+  {q:["who painted the sistine chapel"],a:"Michelangelo painted Sistine Chapel ceiling 1508–1512 and The Last Judgment 1536–1541. Painted lying on scaffolding (not on his back)."},
+  {q:["what is the louvre"],a:"World\'s largest and most visited art museum (~9 million visitors/year). Paris. Collections: 480,000 objects including Mona Lisa, Venus de Milo."},
+  {q:["who was beethoven"],a:"Ludwig van Beethoven (1770–1827) — continued composing after going deaf. 9 symphonies (Ode to Joy), 32 piano sonatas. One of the greatest composers ever."},
+  {q:["who was mozart"],a:"Wolfgang Amadeus Mozart (1756–1791) — Austrian prodigy composing at age 5. Created 800+ works in 35 years: symphonies, operas, concertos. Died at 35."},
+  {q:["what is the most popular sport"],a:"Football (soccer) — ~4 billion fans worldwide. FIFA World Cup (~3.5 billion viewers) is the most-watched event on Earth."},
+  {q:["who is michael jordan"],a:"Greatest basketball player of all time. Chicago Bulls: 6 NBA championships (1991–93, 1996–98), 6 Finals MVPs, 5 regular season MVPs. 14× All-Star."},
+  {q:["who is lebron james"],a:"4× NBA champion, 4× Finals MVP, 4× regular season MVP. All-time NBA scoring leader. Some consider him 2nd greatest, others equal to Jordan."},
+  {q:["what is the olympics"],a:"Ancient origins: Greece, 776 BC. Modern revival: Athens 1896. Summer Games every 4 years; Winter 2 years offset. ~200 nations, 10,000+ athletes. Motto: Faster, Higher, Stronger."},
+  {q:["what is hip hop"],a:"Born in South Bronx, NYC, early 1970s. 4 elements: rapping, DJing, breakdancing, graffiti. Became world\'s most streamed genre by 2017."},
+  {q:["who is pablo picasso"],a:"Pablo Picasso (1881–1973) — Spanish artist, co-founder of Cubism. Guernica (anti-war masterpiece). Most prolific artist in history — 20,000+ works."},
+  {q:["who is the beatles"],a:"John Lennon, Paul McCartney, George Harrison, Ringo Starr. Liverpool 1960–1970. Best-selling music act ever. Albums: Abbey Road, Sgt. Pepper\'s, Revolver."},
+  {q:["who is michael jackson"],a:"\'King of Pop\' (1958–2009). Best-selling music artist of all time. Thriller: 66–70 million copies sold. Moonwalk. 8 Grammys in one night (1984). 13 #1 singles."},
+  {q:["what is the best selling album"],a:"Thriller by Michael Jackson (1982): 66–70 million copies sold. Other top sellers: Back in Black (AC/DC), The Dark Side of the Moon (Pink Floyd)."},
+  {q:["who is beyonce"],a:"Beyoncé — most Grammy Awards of all time (32+). Albums: Lemonade, Renaissance. Former Destiny\'s Child. Global icon: performer, businesswoman, cultural force."},
+  {q:["who is taylor swift"],a:"Taylor Swift — most-streamed artist on Spotify multiple years. Eras Tour: highest-grossing concert tour in history. Albums: Folklore, 1989, Midnights, Fearless."},
+  {q:["who invented jazz"],a:"Jazz emerged in New Orleans early 1900s from African American traditions: blues, ragtime, gospel. Louis Armstrong, Miles Davis, John Coltrane are legends."},
+  {q:["what is opera"],a:"Theatrical art: singing, orchestra, acting, staging. Born Florence ~1600. Composers: Mozart, Verdi, Puccini, Wagner. Famous: The Magic Flute, La Traviata, Carmen."},
+  {q:["what is the grammy award"],a:"Grammy Awards (Recording Academy) — most prestigious music awards. Annual since 1959. Most Grammy wins: Beyoncé (32+). Most in one night: Michael Jackson (8 in 1984)."},
+  {q:["how many languages in the world"],a:"~7,000 languages spoken globally. ~40% endangered. Most spoken (native): Mandarin ~920M, Spanish ~475M, English ~373M. Most total: English ~1.5B."},
+  {q:["hello in spanish"],a:"Hola (OH-lah) 🇪🇸 | Buenos días (good morning) | ¿Cómo estás? (How are you?)"},
+  {q:["hello in french"],a:"Bonjour (bon-ZHOOR) 🇫🇷 | Salut (informal) | Bonsoir (good evening)"},
+  {q:["hello in japanese"],a:"Konnichiwa (こんにちは) 🇯🇵 | Ohayou (morning) | Konbanwa (evening)"},
+  {q:["hello in arabic"],a:"Marhaba (مرحبا) | As-salamu alaykum (السلام عليكم) 🌙"},
+  {q:["hello in german"],a:"Hallo / Guten Tag (formal) 🇩🇪 | Tschüss (goodbye)"},
+  {q:["hello in portuguese"],a:"Olá / Oi (Brazil) 🇵🇹🇧🇷 | Bom dia (morning) | Tudo bem? (All good?)"},
+  {q:["hello in chinese"],a:"Nǐ hǎo (你好) 🇨🇳 | Zǎo (早) — morning | Wèi (喂) — phone"},
+  {q:["hello in hindi"],a:"Namaste (नमस्ते) 🇮🇳 | Kaise ho? (How are you?)"},
+  {q:["hello in russian"],a:"Privyet (Привет) — informal 🇷🇺 | Zdravstvuyte (Здравствуйте) — formal"},
+  {q:["hello in korean"],a:"Annyeonghaseyo (안녕하세요) 🇰🇷 | Annyeong (informal)"},
+  {q:["hello in italian"],a:"Ciao (informal, also goodbye) | Buongiorno (good day) 🇮🇹"},
+  {q:["hello in turkish"],a:"Merhaba 🇹🇷 | Günaydın (good morning) | Nasılsın? (How are you?)"},
+  {q:["hello in dutch"],a:"Hallo / Goedendag (formal) 🇳🇱 | Hoe gaat het? (How are you?)"},
+  {q:["hello in polish"],a:"Cześć (informal) / Dzień dobry (formal) 🇵🇱"},
+  {q:["hello in swedish"],a:"Hej 🇸🇪 | God morgon (good morning) | Hur mår du? (How are you?)"},
+  {q:["hello in greek"],a:"Yia sou (Γεια σου) — informal 🇬🇷 | Yia sas — formal"},
+  {q:["hello in thai"],a:"Sawadee kha/krub (สวัสดีครับ/ค่ะ) 🇹🇭 — female adds kha, male adds krub"},
+  {q:["hello in hebrew"],a:"Shalom (שלום) — also means peace and goodbye 🇮🇱"},
+  {q:["hello in swahili"],a:"Jambo / Habari 🌍 | Karibu (welcome) | Asante (thank you)"},
+  {q:["what is sign language"],a:"Complete natural languages using visual-gestural modality. Not universal — ASL (American), BSL (British), JSL (Japanese) etc. Used by deaf communities worldwide."},
+  {q:["what is a dead language"],a:"Language with no native speakers. Latin: died as spoken language by 8th century but lives in law, medicine, science. Others: Sanskrit, Ancient Greek, Gothic, Cornish."},
+  {q:["what is the world cup","fifa world cup"],a:"Most-watched sporting event. Held every 4 years since 1930. 32 teams (48 from 2026). Most wins: Brazil (5). 2022: Argentina won in Qatar. 2026: USA/Canada/Mexico hosts."},
+  {q:["who has won the most world cups"],a:"Brazil: 5 World Cup titles (1958, 1962, 1970, 1994, 2002). Germany and Italy: 4 each. France: 2. Argentina: 3."},
+  {q:["who is messi","lionel messi"],a:"Argentine footballer. 8× Ballon d\'Or. World Cup winner 2022. All-time Champions League record scorer. Played Barcelona 17 years, PSG, now Inter Miami."},
+  {q:["who is ronaldo","cristiano ronaldo"],a:"Portuguese footballer. 5× Ballon d\'Or. 5× Champions League winner. All-time international goal scorer (130+ goals). Man United, Real Madrid, Juventus, Al Nassr."},
+  {q:["what is the nba"],a:"National Basketball Association — premier basketball league. 30 teams USA/Canada. Most championships: Boston Celtics (18). Stars: LeBron, Curry, Giannis, Jokić."},
+  {q:["what is the nfl"],a:"National Football League — premier American football. 32 teams. Super Bowl is most-watched US TV event annually. Tom Brady: 7 Super Bowl wins."},
+  {q:["what is the super bowl"],a:"NFL championship game, annually in February. ~100M+ US viewers. Halftime show and commercials are cultural events. Tom Brady won 7 — more than any franchise."},
+  {q:["who is usain bolt"],a:"Jamaican sprinter. World records: 100m (9.58s), 200m (19.19s). 8 Olympic gold medals. Greatest sprinter of all time. Retired 2017."},
+  {q:["tennis grand slams","what are the grand slams"],a:"4 Grand Slams:\n• Australian Open (January, hard)\n• French Open (May-June, clay)\n• Wimbledon (June-July, grass)\n• US Open (August-September, hard)"},
+  {q:["who has the most grand slams"],a:"Men: Novak Djokovic — 24 titles. Rafael Nadal — 22. Roger Federer — 20.\nWomen: Serena Williams — 23. Steffi Graf — 22."},
+  {q:["what is formula 1","what is f1"],a:"Highest class open-wheel racing. 20+ races/season, ~20 countries. Cars reach 350+ km/h. Most championships: Lewis Hamilton & Michael Schumacher (7 each)."},
+  {q:["who is lewis hamilton"],a:"Sir Lewis Hamilton — British F1 driver. 7× World Champion. 103+ race wins (record). 104 pole positions (record). Known for diversity advocacy and environmentalism."},
+  {q:["what is cricket"],a:"Sport played between two teams of 11 with bat and ball. Test cricket lasts up to 5 days. Most popular in: India, England, Australia, Pakistan, West Indies. ICC governs it."},
+  {q:["what is basketball","how is basketball played"],a:"5 players per team on court. Score by getting ball through 10-foot hoop. 4 quarters (NBA: 12 min each). Key rules: no traveling, no double dribble, shot clock (24 sec NBA)."},
+  {q:["what is tennis"],a:"Sport played with rackets on court (grass, clay, hard). Scoring: 15, 30, 40, game. Must win 6 games to win a set, typically 3 or 5 sets per match."},
+  {q:["what is golf"],a:"Sport where players hit a ball into 18 holes in as few strokes as possible. Par = expected strokes per hole. Under par: birdie (-1), eagle (-2). Scored opposite to most sports."},
+  {q:["what is rugby"],a:"Contact sport: 15 players per team (Rugby Union) or 13 (Rugby League). Try = 5 points. Conversion = 2 pts. Penalty/drop goal = 3 pts. Rugby World Cup every 4 years."},
+  {q:["what is boxing"],a:"Combat sport: two fighters in gloves punching each other in boxing ring. Win by KO, TKO, or judges\' decision. 17 weight classes from strawweight to heavyweight."},
+  {q:["what is mma","what is mixed martial arts"],a:"Combat sport combining striking and grappling. UFC is top promotion. Weight classes from strawweight to heavyweight. Can win by KO, TKO, submission, or decision."},
+  {q:["what is the tour de france"],a:"World\'s most prestigious cycling race. ~3 weeks, ~21 stages through France (and neighboring countries). ~3,500 km. Winner wears the yellow jersey (maillot jaune). Most wins: Lance Armstrong (stripped) → Eddy Merckx (5)."},
+  {q:["what is the highest grossing movie of all time"],a:"Unadjusted box office:\n1. Avatar (2009/2022 re-release): $2.92B\n2. Avengers: Endgame: $2.80B\n3. Titanic: $2.26B\nAdjusted for inflation: Gone with the Wind (1939) tops the list."},
+  {q:["what is the best movie ever made"],a:"Critically: Citizen Kane (1941) often tops lists. IMDB users: The Shawshank Redemption. Also: 2001: A Space Odyssey, Vertigo, The Godfather, Schindler\'s List."},
+  {q:["what is the oscar award","academy award"],a:"Most prestigious film awards. Presented annually since 1929. Most wins for one film: Ben-Hur, Titanic, Lord of the Rings: Return of the King (11 each)."},
+  {q:["what is netflix"],a:"Streaming service. Founded 1997 (DVD-by-mail), pivoted to streaming 2007. 260M+ subscribers. Pioneered binge-watching. Originals: Stranger Things, Squid Game, The Crown."},
+  {q:["what is the most watched netflix show"],a:"Squid Game (2021, South Korean) — 111 million households in first 28 days. Also: Wednesday, Stranger Things, Money Heist, The Witcher."},
+  {q:["what is global warming"],a:"Long-term rise in Earth\'s temperature due to greenhouse effect amplified by human CO₂ emissions. Since pre-industrial: ~1.1°C rise. Target: below 1.5–2°C."},
+  {q:["what is the greenhouse effect"],a:"Sunlight warms Earth → surface emits infrared → greenhouse gases (CO₂, methane) trap that heat. Natural but amplified by humans causing excess warming."},
+  {q:["what is the ozone layer"],a:"Stratospheric layer (15–35km up) absorbing most UV radiation. CFCs were destroying it — Montreal Protocol (1987) banned them. Ozone hole is healing."},
+  {q:["what is deforestation"],a:"Clearing forests mainly for agriculture and logging. Amazon loses ~10,000 km²/year. Consequences: biodiversity loss, carbon release, disrupted water cycles."},
+  {q:["what is renewable energy"],a:"Energy from naturally replenishing sources: solar, wind, hydro, geothermal, tidal. Now cheaper than fossil fuels in most markets. Key to avoiding catastrophic climate change."},
+  {q:["what is solar energy"],a:"Converts sunlight → electricity via photovoltaic (PV) cells. Fastest-growing energy source. Costs dropped ~90% in last decade."},
+  {q:["what is wind energy"],a:"Wind turbines convert wind kinetic energy → electricity. Onshore wind = among cheapest electricity sources. Denmark generates >40% electricity from wind."},
+  {q:["what is a tornado"],a:"Violently rotating air column touching ground, from thunderstorm. Wind speeds up to 480 km/h. \'Tornado Alley\' (Texas to Nebraska) has the most. Rated EF0–EF5."},
+  {q:["what is a hurricane","what is a typhoon","what is a cyclone"],a:"All are tropical cyclones with sustained winds >119 km/h. Name depends on location:\n• Atlantic/NE Pacific: Hurricane\n• NW Pacific: Typhoon\n• S Pacific/Indian: Cyclone"},
+  {q:["what is an earthquake"],a:"Sudden tectonic plate movement releasing seismic energy. Measured on Richter/moment magnitude scale. Deadliest: 1556 China (830,000 deaths). San Andreas Fault threatens California."},
+  {q:["what is a volcano"],a:"Opening in Earth\'s crust where magma, gas, ash escape. Types: shield (gentle, Hawaii), stratovolcano (explosive, Vesuvius). Deadliest eruption: Tambora 1815."},
+  {q:["what causes rain","how does rain form"],a:"Water evaporates → rises as vapor → cools at altitude → condenses into clouds → falls when droplets grow heavy enough. The water cycle."},
+  {q:["what is the water cycle"],a:"1. Evaporation (water → vapor)\n2. Condensation (vapor → clouds)\n3. Precipitation (rain/snow)\n4. Collection (rivers, lakes, groundwater)\n5. Transpiration (plants release vapor)\n→ Repeat"},
+  {q:["what time is it"],a:"I don't have real-time access — your device clock is right there! ⏰"},
+  {q:["what is today date","what day is it"],a:"Can't access today's date in real-time — check your phone! 📅"},
+  {q:["what is the weather today"],a:"Can't check live weather — try weather.com, Google, or your phone's weather app! ☀️"},
+  {q:["how do i lose weight"],a:"Core principle: sustainable calorie deficit.\n1. Track what you eat\n2. Prioritize protein (filling)\n3. Reduce ultra-processed food\n4. Move more\n5. Sleep 7–9 hours (hunger hormones)\n6. Consistency over perfection"},
+  {q:["how do i make money"],a:"Key paths:\n• Develop high-value skills (coding, sales, design)\n• Freelance or consult\n• Start a business (solve a real problem)\n• Invest early (compound interest)\n• Negotiate your salary\n\nLong-term: deliver massive value."},
+  {q:["how do i learn faster","how to learn better"],a:"Science-backed:\n• Spaced repetition (review at intervals)\n• Active recall (test yourself)\n• Teach others (Feynman technique)\n• Sleep after learning\n• Eliminate multitasking"},
+  {q:["how do i start coding","how to start programming"],a:"Best path:\n1. Python first (clearest syntax)\n2. Learn basics: variables, loops, functions\n3. Build small projects immediately\n4. Free resources: CS50, freeCodeCamp, Codecademy\n5. 30 min daily beats 5 hours on weekends"},
+  {q:["how do i be more productive"],a:"Top methods:\n• Time blocking\n• Pomodoro (25 min work / 5 min break)\n• Most Important Task first\n• Phone in another room\n• Weekly review\n• Say no to low-value tasks"},
+  {q:["how do i improve my english"],a:"Daily habits:\n• Consume English content (podcasts, shows)\n• Speak daily (Tandem, HelloTalk, Cambly)\n• Write in English (journal, social media)\n• Anki for vocabulary\n• Don\'t fear mistakes"},
+  {q:["how do i save money"],a:"Core habits:\n• Track spending\n• Pay yourself first\n• 3–6 month emergency fund\n• Cut subscriptions you don\'t use\n• Cook more, eat out less\n• Automate savings"},
+  {q:["how do i invest money"],a:"Beginner path:\n1. Emergency fund first (3–6 months)\n2. 401k/pension match (free money)\n3. Index funds (S&P 500): diversified, ~10%/year long-term\n4. Time in market > timing the market\n5. Don\'t panic-sell in downturns"},
+  {q:["how do i wake up early"],a:"Tips:\n• Consistent sleep/wake time (including weekends)\n• No screens 30–60 min before bed\n• Cool, dark room\n• Alarm across the room\n• Bright light immediately on waking\n• Gradual shift: 15 min earlier per day"},
+  {q:["how to be confident"],a:"Confidence builders:\n• Build competence (confidence follows skill)\n• Small wins daily (momentum)\n• Power posture (stand tall, eye contact)\n• Prepare thoroughly\n• Accept failure as data, not identity"},
+  {q:["how to make friends","how to be more social"],a:"Building genuine connections:\n• Show genuine interest (ask, listen)\n• Say yes to invitations\n• Join clubs/groups around interests\n• Be vulnerable (share something real)\n• Follow up after meeting someone"},
+  {q:["how to stop procrastinating"],a:"Anti-procrastination:\n• 2-minute rule: <2 min → do it now\n• Eat the frog: hardest task first\n• Reduce friction (open the file, lay out the gear)\n• Time-box: \'just 10 minutes\'\n• Done > perfect"},
+  {q:["how to be happy"],a:"Research-backed:\n• Strong relationships (most important)\n• Sense of purpose\n• Regular exercise (endorphins)\n• Gratitude practice (3 things daily)\n• Acts of kindness\n• Enough sleep"},
+  {q:["what is a good salary"],a:"Relative to location/lifestyle. USA median household: ~$75,000/year. More important: savings rate and investment habit. Financial independence > high salary."},
+  {q:["how do i negotiate salary"],a:"Tips:\n• Research market rate (Glassdoor, Levels.fyi)\n• Let them give first number if possible\n• Anchor high (10–20% above target)\n• Justify with value/market data\n• Always negotiate — worst answer is no"},
+  {q:["how do i start a business"],a:"Steps:\n1. Identify a real problem\n2. Validate (talk to potential customers first)\n3. Build MVP (minimum viable product)\n4. Get first 10 paying customers\n5. Iterate on feedback\n6. Don\'t quit day job until revenue proves it"},
+  {q:["how to write a resume"],a:"Resume essentials:\n• 1 page (unless 10+ years)\n• Quantify achievements (\'increased revenue 23%\' not \'managed team\')\n• Tailor to each job description\n• ATS-friendly formatting\n• Skills matching job requirements"},
+  {q:["how to write a cover letter"],a:"Formula:\n1. Why this company + role\n2. 2–3 specific achievements showing you can do the job\n3. Enthusiasm + call to action\n\nKeep to 1 page. Customize every application."},
+  {q:["how does the brain work"],a:"~86 billion neurons, each connected to ~7,000 others. Uses 20% of body\'s energy despite being 2% of body weight. Key regions: frontal lobe (decisions), hippocampus (memory), amygdala (emotion)."},
+  {q:["how does memory work"],a:"Short-term: seconds to minutes. Long-term: declarative (facts) + procedural (skills). Formation: neurons that fire together wire together. Sleep consolidates memories. Emotion enhances memory."},
+  {q:["why do we dream"],a:"Theories:\n• Memory consolidation\n• Threat simulation (evolutionary)\n• Emotional processing\n• Random neural firing (Activation-Synthesis theory)\nTrue reason: still debated and mysterious."},
+  {q:["how does the eye work"],a:"Light → cornea → pupil → lens → retina (rods: low light; cones: color/detail) → optic nerve → visual cortex. Brain processes ~90% of what we \'see.\'"},
+  {q:["how does digestion work"],a:"Food journey:\nMouth (chew+amylase) → Esophagus → Stomach (acid, 4 hrs) → Small intestine (nutrients absorbed) → Large intestine (water absorbed) → Exit\nTotal: 24–72 hours"},
+  {q:["how does gps work"],a:"24+ satellites at ~20,200 km orbit. Your device receives signals from 4+, calculates distance from travel time, triangulates position. Accurate to ~5 meters civilian."},
+  {q:["how does wifi work"],a:"Router converts internet data to radio waves (2.4 or 5 GHz). Device\'s Wi-Fi adapter receives/decodes them. Range: typically 30–50m indoors."},
+  {q:["how does a battery work"],a:"Chemical energy → electrical energy. Anode (-): oxidation releases electrons. Cathode (+): accepts electrons. Electron flow through circuit = current. Li-ion (phones/EVs) are rechargeable."},
+  {q:["how do planes fly"],a:"Wings (airfoil shape) make air travel faster over top → lower pressure above → lift generated upward. Engines provide thrust to overcome drag. A 747 generates ~900,000 lbs of lift."},
+  {q:["what killed the dinosaurs"],a:"~66 million years ago: ~10-15 km asteroid hit Yucatan Peninsula. Released energy of 10 billion Hiroshima bombs. Triggered fires, nuclear winter, acidified oceans. 75% of species extinct."},
+  {q:["what came before dinosaurs"],a:"Timeline:\n• 3.8B years ago: First life (microbes)\n• 540M: Cambrian explosion\n• 375M: First land vertebrates\n• 252M: Permian extinction (96% of species)\n• 230–66M: Dinosaurs\n• 66M: Asteroid impact → mammals diversified"},
+  {q:["how old is the human race","when did humans appear"],a:"Anatomically modern Homo sapiens: ~300,000 years ago in Africa. Behaviorally modern (art, tools): ~50,000–70,000 years ago. Left Africa: ~60,000–70,000 years ago."},
+  {q:["how old are trees","oldest tree"],a:"Oldest living tree: Bristlecone pine \'Methuselah\' — 4,855 years old, California. Oldest clonal organism: Pando (aspen grove, Utah) — ~80,000 years."},
+  {q:["what is the most common element in the universe"],a:"Hydrogen — ~75% of all normal matter. Second: Helium (~24%). Together: 99% of all atomic matter."},
+  {q:["what is the hottest planet"],a:"Venus — not Mercury! Thick CO₂ atmosphere creates runaway greenhouse effect. Surface: ~465°C (869°F) constantly — hot enough to melt lead."},
+  {q:["how many stars in the milky way"],a:"Estimated 100–400 billion stars. Our sun is just one of them."},
+  {q:["nearest star to earth","closest star"],a:"Proxima Centauri — 4.24 light years away (40 trillion km). Alpha Centauri A/B: 4.37 light years."},
+  {q:["what percent dna do humans share with chimps"],a:"~98.7% of DNA coding sequence. Also: ~85% with mice, ~60% with fruit flies, ~50% with bananas!"},
+  {q:["what percentage of earth is ocean"],a:"~71% of Earth's surface is ocean. Of all water: ~97% saltwater (oceans), ~2.5% freshwater (mostly glaciers), ~0.3% accessible freshwater."},
+  {q:["how many cells are in the human body"],a:"~37 trillion human cells + ~38 trillion microbial cells (bacteria). You are roughly half human, half microbe by cell count!"},
+  {q:["what are the seven wonders of the ancient world"],a:"1. Great Pyramid of Giza (only one standing)\n2. Hanging Gardens of Babylon\n3. Statue of Zeus at Olympia\n4. Temple of Artemis at Ephesus\n5. Mausoleum at Halicarnassus\n6. Colossus of Rhodes\n7. Lighthouse of Alexandria"},
+  {q:["what are the seven wonders of the modern world"],a:"New 7 Wonders (2007):\n1. Great Wall of China\n2. Christ the Redeemer (Brazil)\n3. Machu Picchu (Peru)\n4. Chichen Itza (Mexico)\n5. Roman Colosseum (Italy)\n6. Taj Mahal (India)\n7. Petra (Jordan)"},
+  {q:["what is the great wall of china"],a:"Built over centuries (7th century BC – 17th century AD). Total length with branches: ~21,196 km. NOT visible from space with naked eye (common myth)."},
+  {q:["what is the eiffel tower"],a:"Built 1887–1889 by Gustave Eiffel for 1889 World\'s Fair. Height: 330m. Most visited paid monument on Earth: ~7 million visitors/year."},
+  {q:["what is the colosseum"],a:"Flavian Amphitheatre, Rome — completed 80 AD. Held 50,000–80,000 spectators. Used for gladiatorial contests and public events. Greatest architectural achievement of antiquity."},
+  {q:["what is the taj mahal"],a:"Built 1632–1653 by Mughal Emperor Shah Jahan as mausoleum for his wife. Agra, India. White marble, intricate calligraphy. One of the most beautiful buildings ever built."},
+  {q:["what is machu picchu"],a:"15th-century Inca citadel, 2,430m above sea level, Peru. Built ~1450. \'Rediscovered\' by Hiram Bingham 1911. Precisely cut stones without mortar — construction methods still partially mysterious."},
+  {q:["what is the most dangerous animal"],a:"By deaths/year:\n1. Mosquitoes: ~1 million (via malaria, dengue)\n2. Humans: ~475,000\n3. Snakes: ~50,000\n4. Dogs: ~25,000 (via rabies)\nShark deaths: ~5–10/year globally."},
+  {q:["how long can humans live","maximum human lifespan"],a:"Verified oldest person: Jeanne Calment (France) — 122 years, 164 days. Most experts believe biological maximum is ~120–130 years. Average global life expectancy: ~73 years."},
+  {q:["what is the human eye","how many colors can humans see"],a:"Human eyes have ~6 million cone cells (color) and ~120 million rod cells (low light). Can distinguish ~10 million different colors. The eye processes light at 576 megapixels equivalent."},
+  {q:["how fast does hair grow"],a:"Human hair grows ~0.3–0.4 mm/day, about 15 cm (6 inches)/year. Nails: ~3 mm/month. Fingernails grow faster than toenails."},
+  {q:["what is the strongest material"],a:"Graphene (single layer of carbon atoms) is theoretically the strongest material: ~200× stronger than steel. Practically: spider silk (strength-to-weight), titanium, Kevlar, and diamond (hardest natural material)."},
+  {q:["how much does the earth weigh"],a:"Earth\'s mass: ~5.97 × 10²⁴ kg (5.97 sextillion metric tons). \'Weight\' technically requires a gravitational field to measure against — in space, mass is the correct term."},
+  {q:["what is the deepest hole ever dug"],a:"Kola Superdeep Borehole (Russia) — deepest at 12,262 m (40,230 ft). Drilled 1970–1989. Reached temperatures of 180°C (higher than expected). Sealed in 2008."},
+  {q:["what is the longest word in english"],a:"Pneumonoultramicroscopicsilicovolcanoconiosis (45 letters) — a lung disease caused by inhaling volcanic ash. Longest word in a major English dictionary."},
+  {q:["what is the most spoken language in the world"],a:"Most native speakers: Mandarin Chinese (~920 million). Most total (including 2nd language): English (~1.5 billion). English spoken in 146+ countries."},
 ];
 
-// ── SMART ANSWER ENGINE ────────────────────────────────────────────────────────
-function getAnswer(userInput) {
-  const raw = userInput.toLowerCase().trim().replace(/[?!.,]/g, '');
+// SMART ANSWER ENGINE
+function getAnswer(raw) {
+  const q = raw.toLowerCase().trim().replace(/[?!.,;]/g,'');
+  if (!q) return "Ask me something! 🔥";
 
-  // Direct / contains match
-  for (const entry of QA) {
-    for (const q of entry.q) {
-      if (raw === q || raw.includes(q) || q.includes(raw)) return entry.a;
+  // Direct match
+  for (const e of QA) {
+    for (const k of e.q) {
+      if (q === k || q.includes(k) || k.includes(q)) return e.a;
     }
   }
 
   // Keyword scoring
-  const words = raw.split(/\s+/);
-  let bestScore = 0, bestAnswer = null;
-  for (const entry of QA) {
-    for (const q of entry.q) {
-      const qWords = q.split(/\s+/);
+  const words = q.split(/\s+/).filter(w => w.length > 2);
+  let best = 0, ans = null;
+  for (const e of QA) {
+    for (const k of e.q) {
+      const kw = k.split(/\s+/);
       let score = 0;
-      for (const w of words) if (w.length > 2 && qWords.includes(w)) score++;
-      if (score > bestScore) { bestScore = score; bestAnswer = entry.a; }
+      for (const w of words) if (kw.includes(w)) score += w.length > 4 ? 2 : 1;
+      if (score > best) { best = score; ans = e.a; }
     }
   }
-  if (bestScore >= 2) return bestAnswer;
+  if (best >= 3) return ans;
 
   // Math fallback
-  if (/^[\d\s\+\-\*\/\^\(\)\.x]+$/.test(raw)) {
+  const m = q.replace(/what is|calculate|solve|compute/g,'').trim();
+  if (/^[\d\s\+\-\*\/\^\(\)\.x%]+$/.test(m) && m.length > 0) {
     try {
-      const expr = raw.replace(/x/g,'*').replace(/\^/g,'**');
-      const result = Function('"use strict";return('+expr+')')();
-      if (!isNaN(result)) return raw + ' = ' + result + ' 🔥';
+      const r = Function('"use strict";return('+m.replace(/x/gi,'*').replace(/\^/g,'**')+')')();
+      if (!isNaN(r) && isFinite(r)) return m.trim() + ' = ' + r + ' 🔥';
     } catch(e) {}
   }
 
-  // Helpful redirects
-  if (raw.includes('capital of')) return "Try: \"What is the capital of [country]?\" — I know most of them! 🌍";
-  if (raw.includes('how to') || raw.includes('how do i')) return "Good how-to! Be a little more specific and I'll fire back the answer. 🔥";
-  if (raw.includes('what is') || raw.includes('what are')) return "Interesting! Try rephrasing — I cover science, math, history, tech, health, coding and much more.";
-  if (raw.includes('who is') || raw.includes('who was')) return "I know many famous figures. Be more specific and I'll burn through the answer! 🔥";
-  if (raw.includes('why')) return "Great 'why' question! Give me a bit more context.";
-  if (raw.includes('when')) return "For dates, try: 'When did WW2 end?' or 'When was [event]?' 📅";
-  if (raw.includes('where')) return "Geography question? Try: 'What is the capital of [country]?' or 'Where is [place]?' 🌍";
-  if (raw.includes('code') || raw.includes('program')) return "Coding question! Try: 'How do I print hello world in Python?' or 'What is a for loop?' 💻";
-
-  return "🔥 Madfire doesn't have that exact answer yet — try rephrasing! I know science, math, history, geography, coding, health, philosophy, food, animals, and much more.";
+  // Helpful topic hints
+  if (q.includes('capital of') || q.includes('capital city')) return "I know most world capitals! Try: 'What is the capital of [country]?' 🌍";
+  if (q.includes('how to') || q.includes('how do i') || q.includes('how can i')) return "Good how-to question! Be a bit more specific. 🔥 Try: 'How do I [specific thing]?'";
+  if (q.includes('who invented') || q.includes('who created')) return "I know many inventors! Try: 'Who invented [thing]?' 🔥";
+  if (q.includes('when did') || q.includes('what year')) return "Try: 'When did [event] happen?' I know lots of history! 📜";
+  if (q.includes('what is') || q.includes('what are')) return "Try rephrasing with more specific terms — I cover science, math, history, coding, health, geography, philosophy, sport, music, culture and much more. 🔥";
+  if (q.includes('who is') || q.includes('who was')) return "I know many famous people! Be more specific — name the person you want to know about. 🔥";
+  if (q.includes('why ')) return "Great 'why' question! Give me a bit more context. 🔥";
+  if (q.includes('where ')) return "Location question? Try: 'What is the capital of [country]?' 🌍";
+  if (q.includes('code') || q.includes('program')) return "Coding question! Try: 'How do I write a for loop in Python?' 💻";
+  if (q.includes('recipe') || q.includes('cook') || q.includes('food')) return "Food question! Try: 'What is [dish]?' or 'How many calories in [food]?' 🍽️";
+  return "🔥 Madfire has " + QA.length + "+ entries but doesn't have that exact one yet. Try rephrasing! I cover: science, math, history, geography, coding, health, food, animals, sports, music, movies, philosophy, language, economics and much more.";
 }
 
-// ── SUGGESTIONS ────────────────────────────────────────────────────────────────
-const SUGGESTIONS = [
-  "What is gravity?","How do I start coding?","What is AI?",
-  "Capital of Japan?","How many planets?","Speed of light?",
-  "Who was Einstein?","What is DNA?","How do I lose weight?",
-  "Meaning of life?","Largest animal?","Be more productive?",
-  "What is Bitcoin?","What is the Big Bang?","Who painted Mona Lisa?",
-  "What is 9*9?","Hello!","What can you do?"
+// SUGGESTIONS
+const SUGS = [
+  "What is gravity?","Speed of light?","What is DNA?","What is AI?",
+  "Capital of Japan?","Who was Einstein?","How many planets?","What is Bitcoin?",
+  "How do I start coding?","How do I lose weight?","What is the Big Bang?",
+  "Who painted Mona Lisa?","Largest animal?","What is 12*12?","Hello!",
+  "What is the Pythagorean theorem?","What is Fibonacci?","Who is Messi?",
+  "What is a black hole?","Who is Shakespeare?","What caused WW1?",
+  "What is stoicism?","How does GPS work?","What is CRISPR?",
+  "Capital of Australia?","What is depression?","How to build muscle?",
+  "What is compound interest?","What is the Magna Carta?","Who is Usain Bolt?"
 ];
 
-// ── UI ─────────────────────────────────────────────────────────────────────────
-const messagesEl = document.getElementById('messages');
-const inputEl    = document.getElementById('userInput');
-const sendBtn    = document.getElementById('sendBtn');
-const sugsEl     = document.getElementById('suggestions');
-const qaCountEl  = document.getElementById('qaCount');
+// UI
+const msgs = document.getElementById('msgs');
+const inp  = document.getElementById('ui');
+const btn  = document.getElementById('sb');
+const sc   = document.getElementById('sc');
+const qc   = document.getElementById('qc');
 
-qaCountEl.textContent = (QA.length * 3) + '+ Q&As loaded';
+qc.textContent = QA.length + ' topics 🔥';
 
-// Render suggestion chips
-SUGGESTIONS.forEach(s => {
-  const btn = document.createElement('button');
-  btn.className = 'chip';
-  btn.textContent = s;
-  btn.addEventListener('click', () => send(s));
-  sugsEl.appendChild(btn);
+SUGS.forEach(s => {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.textContent = s;
+  b.addEventListener('click', () => send(s));
+  sc.appendChild(b);
 });
 
-// Welcome message
-addMsg('ai', "I'm Madfire 🔥 — your blazing AI. I can answer almost anything: science, math, history, coding, health, philosophy, and more.\n\nPick a question below or type your own!", 0);
+addMsg('a', "I'm Madfire 🔥 — your blazing AI with " + QA.length + "+ topic entries covering science, math, history, geography, coding, health, food, animals, sports, music, philosophy, economics, language, space and much more.\n\nPick a suggestion below or ask me anything!", 0);
 
-function fmtMs(ms) { return ms < 1000 ? ms + 'ms' : (ms/1000).toFixed(2) + 's'; }
+function fmt(ms) { return ms < 1000 ? ms + 'ms' : (ms/1000).toFixed(2) + 's'; }
 
 function addMsg(role, text, timer) {
   const row = document.createElement('div');
-  row.className = 'msg-row ' + role;
-
-  if (role === 'ai') {
-    const avatar = document.createElement('div');
-    avatar.className = 'ai-avatar';
-    avatar.textContent = '🔥';
-    row.appendChild(avatar);
+  row.className = 'mr ' + role;
+  if (role === 'a') {
+    const av = document.createElement('div');
+    av.className = 'av'; av.textContent = '🔥';
+    row.appendChild(av);
   }
-
   const wrap = document.createElement('div');
-  wrap.className = 'msg-wrap';
-
-  if (role === 'ai') {
+  wrap.className = 'mw';
+  if (role === 'a') {
     const meta = document.createElement('div');
-    meta.className = 'msg-meta';
-    const name = document.createElement('span');
-    name.className = 'name';
-    name.textContent = 'MADFIRE';
-    meta.appendChild(name);
+    meta.className = 'mm';
+    const nm = document.createElement('span');
+    nm.className = 'mn'; nm.textContent = 'MADFIRE';
+    meta.appendChild(nm);
     if (timer > 0) {
-      const badge = document.createElement('span');
-      badge.className = 'timer-badge';
-      badge.textContent = '⚡ ' + fmtMs(timer);
-      meta.appendChild(badge);
+      const tb = document.createElement('span');
+      tb.className = 'tb'; tb.textContent = '⚡ ' + fmt(timer);
+      meta.appendChild(tb);
     }
     wrap.appendChild(meta);
   }
-
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble ' + role;
-  bubble.textContent = text;
-  wrap.appendChild(bubble);
+  const bub = document.createElement('div');
+  bub.className = 'b ' + role;
+  bub.textContent = text;
+  wrap.appendChild(bub);
   row.appendChild(wrap);
-  messagesEl.appendChild(row);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+  msgs.appendChild(row);
+  msgs.scrollTop = msgs.scrollHeight;
 }
 
 function send(text) {
-  const q = (text || inputEl.value).trim();
+  const q = (text !== undefined ? text : inp.value).trim();
   if (!q) return;
-  inputEl.value = '';
-  sendBtn.disabled = true;
-  addMsg('user', q, 0);
+  inp.value = ''; inp.style.height = 'auto';
+  btn.disabled = true;
+  addMsg('u', q, 0);
   const t0 = Date.now();
   setTimeout(() => {
-    const answer = getAnswer(q);
-    addMsg('ai', answer, Date.now() - t0);
-  }, 60 + Math.random() * 140);
+    addMsg('a', getAnswer(q), Date.now() - t0);
+  }, 40 + Math.random() * 100);
 }
 
-inputEl.addEventListener('input', () => {
-  sendBtn.disabled = !inputEl.value.trim();
-  // Auto-resize
-  inputEl.style.height = 'auto';
-  inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px';
+inp.addEventListener('input', () => {
+  btn.disabled = !inp.value.trim();
+  inp.style.height = 'auto';
+  inp.style.height = Math.min(inp.scrollHeight, 100) + 'px';
 });
-
-inputEl.addEventListener('keydown', e => {
+inp.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
 });
-
-sendBtn.addEventListener('click', () => send());
+btn.addEventListener('click', () => send());
 </script>
 </body>
 </html>
